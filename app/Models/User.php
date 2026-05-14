@@ -5,17 +5,17 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Tymon\JWTAuth\Contracts\JWTSubject;
+use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 /**
  * User Model
  *
- * Implements JWTSubject để tích hợp với tymon/jwt-auth.
  * Mỗi user có role: 'attendee' hoặc 'organizer'.
  */
-class User extends Authenticatable implements JWTSubject
+class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable, HasUuids;
 
     /**
      * Các trường có thể mass-assign
@@ -48,23 +48,18 @@ class User extends Authenticatable implements JWTSubject
         ];
     }
 
-    // ─── JWT Interface ─────────────────────────────────────────────────────
-
-    /**
-     * Get the identifier that will be stored in the subject claim of the JWT.
-     */
-    public function getJWTIdentifier(): mixed
+    public function events()
     {
-        return $this->getKey();
+        return $this->hasMany(Event::class, 'organizer_id');
     }
 
-    /**
-     * Return a key value array, containing any custom claims to be added to the JWT.
-     */
-    public function getJWTCustomClaims(): array
+    public function registrations()
     {
-        return [
-            'role' => $this->role,
-        ];
+        return $this->hasMany(Registration::class, 'user_id');
+    }
+
+    public function reviews()
+    {
+        return $this->hasMany(Review::class, 'user_id');
     }
 }
