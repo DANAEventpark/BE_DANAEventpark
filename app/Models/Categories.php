@@ -9,8 +9,33 @@ class Categories extends Model
 {
     protected $table = 'categories';
 
+    public $timestamps = false;
+
+    protected $guarded = [];
+
+    protected $appends = [
+        'image_url',
+    ];
+
     public function events(): HasMany
     {
         return $this->hasMany(Event::class, 'category_id');
+    }
+
+    public function getImageUrlAttribute(): ?string
+    {
+        if (! $this->image) {
+            return null;
+        }
+
+        if (preg_match('/^https?:\/\//i', $this->image) === 1) {
+            return $this->image;
+        }
+
+        if (str_contains($this->image, '/')) {
+            return asset(ltrim($this->image, '/'));
+        }
+
+        return asset('images/categories/' . ltrim($this->image, '/'));
     }
 }

@@ -3,68 +3,74 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Tymon\JWTAuth\Contracts\JWTSubject;
 
-/**
- * User Model
- *
- * Implements JWTSubject để tích hợp với tymon/jwt-auth.
- * Mỗi user có role: 'attendee' hoặc 'organizer'.
- */
 class User extends Authenticatable implements JWTSubject
 {
     use HasFactory, Notifiable;
 
-    /**
-     * Các trường có thể mass-assign
-     */
     protected $fillable = [
+        'role_id',
         'name',
         'email',
         'password',
         'phone',
-        'role',        // 'attendee' | 'organizer'
-        'avatar',
+        'organization_name',
     ];
 
-    /**
-     * Các trường ẩn khỏi JSON response
-     */
     protected $hidden = [
         'password',
-        'remember_token',
     ];
 
-    /**
-     * Type casting
-     */
+    protected $appends = [
+        'role_name',
+    ];
+
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'password'          => 'hashed',
+            'password' => 'hashed',
         ];
     }
 
-    // ─── JWT Interface ─────────────────────────────────────────────────────
+    public function role(): BelongsTo
+    {
+        return $this->belongsTo(Role::class, 'role_id');
+    }
 
-    /**
-     * Get the identifier that will be stored in the subject claim of the JWT.
-     */
+    public function organizedEvents(): HasMany
+    {
+        return $this->hasMany(Event::class, 'organizer_id');
+    }
+
+    public function registrations(): HasMany
+    {
+        return $this->hasMany(Registration::class, 'user_id');
+    }
+
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(Review::class, 'user_id');
+    }
+
+    public function getRoleNameAttribute(): ?string
+    {
+        return $this->role?->name;
+    }
+
     public function getJWTIdentifier(): mixed
     {
         return $this->getKey();
     }
 
-    /**
-     * Return a key value array, containing any custom claims to be added to the JWT.
-     */
     public function getJWTCustomClaims(): array
     {
         return [
-            'role' => $this->role,
+            'role' => $this->role_name,
         ];
     }
 }

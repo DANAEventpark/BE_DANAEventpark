@@ -8,13 +8,14 @@ use Symfony\Component\HttpFoundation\Response;
 
 class CheckRole
 {
-    /**
-     * Handle an incoming request.
-     *
-     * @param  Closure(Request): (Response)  $next
-     */
-    public function handle(Request $request, Closure $next): Response
+    public function handle(Request $request, Closure $next, string $role): Response
     {
+        $user = $request->user();
+
+        if (! $user || $user->role_name !== $role) {
+            abort(403, 'You do not have permission to access this resource.');
+        }
+
         return $next($request);
     }
 }
