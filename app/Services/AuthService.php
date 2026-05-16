@@ -17,11 +17,13 @@ class AuthService
     public function register(array $data): array
     {
         $user = User::create([
-            'name' => $data['name'],
-            'email' => $data['email'],
+            'name'     => $data['name'],
+            'email'    => $data['email'],
             'password' => Hash::make($data['password']),
-            'role' => $data['role'] ?? 'attendee',
+            'role'     => $data['role'] ?? 'attendee',
+            'phone'    => $data['phone'] ?? null,
         ]);
+
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
