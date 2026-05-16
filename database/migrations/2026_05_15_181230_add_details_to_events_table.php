@@ -12,8 +12,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('events', function (Blueprint $table) {
-            //
+            $table->unsignedInteger('capacity')->default(100)->after('status');
+            $table->foreignId('category_id')->nullable()->constrained('categories')->nullOnDelete()->after('capacity');
+            $table->string('image')->nullable()->after('category_id');
+            $table->dateTime('registration_deadline')->nullable()->after('image');
         });
+
     }
 
     /**

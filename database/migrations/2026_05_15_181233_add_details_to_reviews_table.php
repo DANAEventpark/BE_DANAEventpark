@@ -11,18 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // All review columns already defined in create_reviews_table migration
         Schema::table('reviews', function (Blueprint $table) {
-            //
+            // no-op
         });
-    }
 
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
-    {
-        Schema::table('reviews', function (Blueprint $table) {
-            //
-        });
     }
 };

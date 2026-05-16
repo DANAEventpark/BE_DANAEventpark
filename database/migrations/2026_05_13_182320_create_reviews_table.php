@@ -13,8 +13,13 @@ return new class extends Migration
     {
         Schema::create('reviews', function (Blueprint $table) {
             $table->id();
+            $table->foreignUuid('user_id')->constrained()->onDelete('cascade');
+            $table->foreignId('event_id')->constrained()->onDelete('cascade');
+            $table->unsignedTinyInteger('rating');
+            $table->text('comment');
             $table->timestamps();
         });
+
     }
 
     /**
