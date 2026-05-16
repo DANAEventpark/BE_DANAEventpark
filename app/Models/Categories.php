@@ -36,6 +36,6 @@ class Categories extends Model
             return asset(ltrim($this->image, '/'));
         }
 
-        return asset('images/categories/' . ltrim($this->image, '/'));
+        return asset('storage/' . ltrim($this->image, '/'));
     }
 }
