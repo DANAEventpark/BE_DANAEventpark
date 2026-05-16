@@ -11,14 +11,11 @@ use Carbon\Carbon;
 
 class EventController extends Controller
 {
-    /**
-     * Query cơ bản dùng chung
-     */
+
     private function baseEventQuery(): Builder
     {
         return Event::query()
 
-            // LOAD RELATIONS
             ->with([
                 'category:id,name,image',
                 'organizer:id,name,organization_name',
@@ -43,13 +40,8 @@ class EventController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = $this->baseEventQuery()
-
-            // CHỈ LẤY EVENT ĐÃ PUBLISHED
             ->where('status', 'published');
 
-        /**
-         * SEARCH
-         */
         if ($request->filled('search')) {
 
             $search = $request->input('search');
@@ -146,9 +138,6 @@ class EventController extends Controller
             );
         }
 
-        /**
-         * SORT + PAGINATION
-         */
         $events = $query
             ->orderBy('start_time', 'asc')
             ->paginate(6);

@@ -16,6 +16,7 @@ class Event extends Model
 {
     protected $table = 'events';
 
+
     protected $fillable = [
         'organizer_id',
         'category_id',
@@ -61,4 +62,5 @@ class Event extends Model
     {
         return $this->hasMany(Review::class, 'event_id');
     }
+
 }
