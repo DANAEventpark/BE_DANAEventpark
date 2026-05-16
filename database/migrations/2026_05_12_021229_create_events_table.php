@@ -18,7 +18,7 @@ return new class extends Migration
             $table->dateTime('start_time');
             $table->dateTime('end_time');
             $table->string('location');
-            $table->foreignId('organizer_id')->constrained('users')->onDelete('cascade');
+            $table->foreignUuid('organizer_id')->constrained('users')->onDelete('cascade');
             $table->enum('status', ['draft', 'published', 'cancelled'])->default('draft');
             $table->timestamps();
         });
