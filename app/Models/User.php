@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -17,50 +18,38 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable, HasUuids;
 
-    /**
-     * Các trường có thể mass-assign
-     */
     protected $fillable = [
         'name',
         'email',
         'password',
         'phone',
-        'role',        // 'attendee' | 'organizer'
-        'avatar',
+        'role',
     ];
 
-    /**
-     * Các trường ẩn khỏi JSON response
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * Type casting
-     */
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'password'          => 'hashed',
+            'password' => 'hashed',
         ];
     }
 
-    public function events()
+    public function events(): HasMany
     {
         return $this->hasMany(Event::class, 'organizer_id');
     }
 
-    public function registrations()
+    public function registrations(): HasMany
     {
         return $this->hasMany(Registration::class, 'user_id');
     }
 
-    public function reviews()
+    public function reviews(): HasMany
     {
         return $this->hasMany(Review::class, 'user_id');
     }
 }
-

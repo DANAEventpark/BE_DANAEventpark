@@ -4,13 +4,21 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+use App\Models\Categories;
+use App\Models\User;
+use App\Models\Registration;
+use App\Models\Review;
+
 class Event extends Model
 {
     protected $table = 'events';
 
     protected $fillable = [
         'title', 'description', 'start_time', 'end_time', 'location', 
-        'organizer_id', 'status', 'capacity', 'registration_deadline', 'category_id', 'image'
+        'organizer_id', 'status', 'capacity', 'registration_deadline', 'category_id', 'image', 'cancel_reason'
     ];
 
     protected $casts = [
