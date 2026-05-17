@@ -18,8 +18,12 @@ Route::prefix('auth')->group(function () {
     });
 });
 
+// Event List — search, filter, paginate (REQ_06 + REQ_08)
+Route::get('/events', [EventController::class, 'index']);
+
 // Event Detail (REQ_09)
 Route::get('/events/{id}', [EventController::class, 'show']);
+
 
 // Categories (REQ_13)
 Route::get('/categories', [CategoryController::class, 'index']);
