@@ -239,4 +239,34 @@ class EventListTest extends TestCase
         
         $this->assertEquals(4, (float) $response->json('data.0.reviews_avg_rating'));
     }
+
+    public function test_it_can_get_system_stats()
+    {
+        // 1. Create published and draft events
+        Event::factory()->create(['status' => 'published']);
+        Event::factory()->create(['status' => 'published']);
+        Event::factory()->create(['status' => 'draft']);
+
+        // 2. Create users with roles
+        User::factory()->create(['role' => 'organizer']);
+        User::factory()->create(['role' => 'organizer']);
+        User::factory()->create(['role' => 'attendee']);
+
+        // 3. Create approved registrations
+        $event = Event::factory()->create(['status' => 'published']);
+        Registration::factory()->create(['event_id' => $event->id, 'status' => 'approved']);
+        Registration::factory()->create(['event_id' => $event->id, 'status' => 'pending']);
+
+        $response = $this->getJson('/api/system-stats');
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'data' => [
+                    'total_events' => 3, // 2 from above + 1 for registration test event
+                    'total_organizers' => 2,
+                    'total_registrations' => 1,
+                ]
+            ]);
+    }
 }

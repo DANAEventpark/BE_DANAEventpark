@@ -11,8 +11,7 @@ abstract class TestCase extends BaseTestCase
     /**
      * Set the currently logged in user for the request using JWT.
      *
-     * @param  \App\Models\User  $user
-     * @param  string|null  $driver
+    * @param  \App\Models\User  $user
      * @return $this
      */
     public function actingAsJwt(User $user)

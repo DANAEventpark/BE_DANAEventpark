@@ -18,6 +18,9 @@ Route::prefix('auth')->group(function () {
     });
 });
 
+// System Stats (REQ_06 + REQ_08)
+Route::get('/system-stats', [EventController::class, 'getSystemStats']);
+
 // Event List — search, filter, paginate (REQ_06 + REQ_08)
 Route::get('/events', [EventController::class, 'index']);
 

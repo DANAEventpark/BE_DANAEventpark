@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Event;
+use Illuminate\Support\Facades\DB;
 
 class EventController extends Controller
 {
@@ -78,5 +79,33 @@ class EventController extends Controller
             'success' => true,
             'data' => $event
         ]);
+    }
+
+    /**
+     * GET /api/system-stats
+     * Get system statistics (events, registrations, organizers)
+     */
+    public function getSystemStats()
+    {
+        try {
+            $totalEvents = DB::table('events')->where('status', 'published')->count();
+            $totalRegistrations = DB::table('registrations')->where('status', 'approved')->count();
+            $totalOrganizers = DB::table('users')->where('role', 'organizer')->count();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'total_events' => (int) $totalEvents,
+                    'total_registrations' => (int) $totalRegistrations,
+                    'total_organizers' => (int) $totalOrganizers
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không thể lấy số liệu thống kê',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }
