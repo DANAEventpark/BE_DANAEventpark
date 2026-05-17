@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class AuthService
 {
@@ -24,8 +25,7 @@ class AuthService
             'phone'    => $data['phone'] ?? null,
         ]);
 
-
-        $token = $user->createToken('auth_token')->plainTextToken;
+        $token = JWTAuth::fromUser($user);
 
         return [
             'user' => $user,
@@ -50,7 +50,7 @@ class AuthService
             ]);
         }
 
-        $token = $user->createToken('auth_token')->plainTextToken;
+        $token = JWTAuth::fromUser($user);
 
         return [
             'user' => $user,
@@ -66,6 +66,6 @@ class AuthService
      */
     public function logout(User $user): void
     {
-        $user->currentAccessToken()->delete();
+        JWTAuth::invalidate(JWTAuth::getToken());
     }
 }
