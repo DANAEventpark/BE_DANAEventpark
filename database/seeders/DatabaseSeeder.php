@@ -13,12 +13,12 @@ class DatabaseSeeder extends Seeder
     {
         // ── 1. CATEGORIES ─────────────────────────────────────
         $categories = [
-            ['name' => 'Âm nhạc',    'image' => null],
-            ['name' => 'Thể thao',   'image' => null],
-            ['name' => 'Nghệ thuật', 'image' => null],
-            ['name' => 'Ẩm thực',    'image' => null],
-            ['name' => 'Giáo dục',   'image' => null],
-            ['name' => 'Cộng đồng',  'image' => null],
+            ['name' => 'Âm nhạc',    'image' => 'music.jpg'],
+            ['name' => 'Thể thao',   'image' => 'sports.jpg'],
+            ['name' => 'Nghệ thuật', 'image' => 'art.jpg'],
+            ['name' => 'Ẩm thực',    'image' => 'food.jpg'],
+            ['name' => 'Giáo dục',   'image' => 'education.jpg'],
+            ['name' => 'Cộng đồng',  'image' => 'community.jpg'],
         ];
 
         foreach ($categories as &$cat) {
