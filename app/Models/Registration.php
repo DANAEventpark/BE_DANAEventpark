@@ -4,22 +4,21 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Registration extends Model
 {
-    protected $table = 'registrations';
+    use HasFactory;
 
-    public $timestamps = false;
+    protected $fillable = ['event_id', 'user_id', 'status'];
 
-    protected $guarded = [];
-
-    public function event(): BelongsTo
+    public function user()
     {
-        return $this->belongsTo(Event::class, 'event_id');
+        return $this->belongsTo(User::class);
     }
 
-    public function user(): BelongsTo
+    public function event()
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(Event::class);
     }
 }

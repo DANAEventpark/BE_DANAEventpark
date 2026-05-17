@@ -3,64 +3,44 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-
-use App\Models\Categories;
-use App\Models\User;
-use App\Models\Registration;
-use App\Models\Review;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Event extends Model
 {
+    use HasFactory;
+
     protected $table = 'events';
 
-
     protected $fillable = [
-        'organizer_id',
-        'category_id',
-        'title',
-        'description',
-        'location',
-        'start_time',
-        'end_time',
-        'registration_deadline',
-        'capacity',
-        'cancel_reason',
-        'status',
+        'title', 'description', 'start_time', 'end_time', 'location', 
+        'organizer_id', 'status', 'capacity', 'registration_deadline', 'category_id', 'image', 'cancel_reason'
     ];
 
-    /**
-     * CATEGORY
-     */
-    public function category(): BelongsTo
+    protected $casts = [
+        'start_time' => 'datetime',
+        'end_time' => 'datetime',
+        'registration_deadline' => 'datetime',
+    ];
+
+    public function category()
     {
-        return $this->belongsTo(Categories::class, 'category_id');
+        return $this->belongsTo(Category::class);
     }
 
-    /**
-     * ORGANIZER
-     */
-    public function organizer(): BelongsTo
+    public function organizer()
     {
         return $this->belongsTo(User::class, 'organizer_id');
     }
 
-    /**
-     * REGISTRATIONS
-     */
-    public function registrations(): HasMany
+    public function registrations()
     {
-        return $this->hasMany(Registration::class, 'event_id');
+        return $this->hasMany(Registration::class);
     }
 
-    /**
-     * REVIEWS
-     */
-    public function reviews(): HasMany
+    public function reviews()
     {
-        return $this->hasMany(Review::class, 'event_id');
+        return $this->hasMany(Review::class);
     }
-
 }

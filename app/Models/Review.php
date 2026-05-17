@@ -3,24 +3,22 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Review extends Model
 {
-    protected $table = 'reviews';
+    use HasFactory;
 
-    public $timestamps = false;
+    protected $fillable = ['user_id', 'event_id', 'rating', 'comment'];
 
-    protected $guarded = [];
-
-    public function event(): BelongsTo
+    public function user()
     {
-        return $this->belongsTo(Event::class, 'event_id');
+        return $this->belongsTo(User::class);
     }
 
-    public function user(): BelongsTo
+    public function event()
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(Event::class);
     }
 }

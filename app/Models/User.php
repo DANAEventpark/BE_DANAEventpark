@@ -3,31 +3,32 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Tymon\JWTAuth\Contracts\JWTSubject;
 
+
+/**
+ * User Model
+ *
+ * Mỗi user có role: 'attendee' hoặc 'organizer'.
+ */
 class User extends Authenticatable implements JWTSubject
 {
     use HasFactory, Notifiable;
 
     protected $fillable = [
-        'role_id',
         'name',
         'email',
         'password',
         'phone',
-        'organization_name',
+        'role_id',
     ];
 
     protected $hidden = [
         'password',
-    ];
-
-    protected $appends = [
-        'role_name',
+        'remember_token',
     ];
 
     protected function casts(): array
@@ -37,12 +38,7 @@ class User extends Authenticatable implements JWTSubject
         ];
     }
 
-    public function role(): BelongsTo
-    {
-        return $this->belongsTo(Role::class, 'role_id');
-    }
-
-    public function organizedEvents(): HasMany
+    public function events(): HasMany
     {
         return $this->hasMany(Event::class, 'organizer_id');
     }
@@ -57,20 +53,25 @@ class User extends Authenticatable implements JWTSubject
         return $this->hasMany(Review::class, 'user_id');
     }
 
-    public function getRoleNameAttribute(): ?string
-    {
-        return $this->role?->name;
-    }
-
-    public function getJWTIdentifier(): mixed
+    /**
+     * Get the identifier that will be stored in the subject claim of the JWT.
+     */
+    public function getJWTIdentifier()
     {
         return $this->getKey();
     }
 
-    public function getJWTCustomClaims(): array
+    /**
+     * Return a key value array, containing any custom claims to be added to the JWT.
+     */
+    public function getJWTCustomClaims()
     {
         return [
-            'role' => $this->role_name,
+            'role_id' => $this->role_id,
         ];
     }
+    public function role()
+{
+    return $this->belongsTo(Role::class);
+}
 }

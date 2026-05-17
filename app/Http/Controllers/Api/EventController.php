@@ -154,4 +154,32 @@ class EventController extends Controller
             ], 500);
         }
     }
+    public function show($id): JsonResponse
+{
+    $event = Event::with([
+        'category:id,name,image',
+        'organizer:id,name,organization_name',
+        'reviews.user:id,name'
+    ])
+    ->withCount([
+        'registrations as confirmed_registrations_count' => function ($query) {
+            $query->where('status', 'confirmed');
+        },
+        'reviews',
+    ])
+    ->withAvg('reviews', 'rating')
+    ->find($id);
+
+    if (!$event) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Không tìm thấy sự kiện'
+        ], 404);
+    }
+
+    return response()->json([
+        'success' => true,
+        'data' => $event
+    ]);
+}
 }
