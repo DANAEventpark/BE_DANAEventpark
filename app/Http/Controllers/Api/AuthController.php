@@ -51,7 +51,7 @@ class AuthController extends Controller
             'role_id' => $role->id,
             'name' => $request->name,
             'email' => $request->email,
-            'password' => $request->password,
+            'password' => bcrypt($request->password),
             'phone' => $request->phone,
             'organization_name' => $request->organization_name,
         ])->load('role:id,name');
