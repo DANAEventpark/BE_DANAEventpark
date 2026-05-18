@@ -23,7 +23,7 @@ class User extends Authenticatable implements JWTSubject
         'email',
         'password',
         'phone',
-        'role',
+        'role_id',
     ];
 
     protected $hidden = [
@@ -36,6 +36,11 @@ class User extends Authenticatable implements JWTSubject
         return [
             'password' => 'hashed',
         ];
+    }
+
+    public function role(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Role::class, 'role_id');
     }
 
     public function events(): HasMany
@@ -67,7 +72,7 @@ class User extends Authenticatable implements JWTSubject
     public function getJWTCustomClaims()
     {
         return [
-            'role' => $this->role,
+            'role' => $this->role?->name ?? 'attendee',
         ];
     }
 }

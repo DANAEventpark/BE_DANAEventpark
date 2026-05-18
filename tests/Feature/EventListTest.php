@@ -248,9 +248,9 @@ class EventListTest extends TestCase
         Event::factory()->create(['status' => 'draft']);
 
         // 2. Create users with roles
-        User::factory()->create(['role' => 'organizer']);
-        User::factory()->create(['role' => 'organizer']);
-        User::factory()->create(['role' => 'attendee']);
+        User::factory()->create(['role_id' => 2]);
+        User::factory()->create(['role_id' => 2]);
+        User::factory()->create(['role_id' => 1]);
 
         // 3. Create approved registrations
         $event = Event::factory()->create(['status' => 'published']);

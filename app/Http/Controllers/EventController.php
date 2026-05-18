@@ -90,7 +90,7 @@ class EventController extends Controller
         try {
             $totalEvents = DB::table('events')->where('status', 'published')->count();
             $totalRegistrations = DB::table('registrations')->where('status', 'approved')->count();
-            $totalOrganizers = DB::table('users')->where('role', 'organizer')->count();
+            $totalOrganizers = DB::table('users')->where('role_id', 2)->count();
 
             return response()->json([
                 'success' => true,

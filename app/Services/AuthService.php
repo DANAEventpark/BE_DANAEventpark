@@ -17,13 +17,18 @@ class AuthService
      */
     public function register(array $data): array
     {
+        $roleName = $data['role'] ?? 'attendee';
+        $roleId = $roleName === 'organizer' ? 2 : 1;
+
         $user = User::create([
             'name'     => $data['name'],
             'email'    => $data['email'],
             'password' => Hash::make($data['password']),
-            'role'     => $data['role'] ?? 'attendee',
+            'role_id'  => $roleId,
             'phone'    => $data['phone'] ?? null,
         ]);
+
+        $user->load('role');
 
         $token = JWTAuth::fromUser($user);
 
@@ -42,7 +47,7 @@ class AuthService
      */
     public function login(array $data): array
     {
-        $user = User::where('email', $data['email'])->first();
+        $user = User::with('role')->where('email', $data['email'])->first();
 
         if (!$user || !Hash::check($data['password'], $user->password)) {
             throw ValidationException::withMessages([

@@ -25,7 +25,7 @@ class AuthTest extends TestCase
                 'status',
                 'message',
                 'data' => [
-                    'user' => ['id', 'name', 'email', 'phone', 'role'],
+                    'user' => ['id', 'name', 'email', 'phone', 'role_id', 'role' => ['id', 'name']],
                     'token',
                     'token_type',
                 ],
@@ -33,7 +33,7 @@ class AuthTest extends TestCase
 
         $this->assertDatabaseHas('users', [
             'email' => 'vana@gmail.com',
-            'role' => 'attendee',
+            'role_id' => 1,
         ]);
     }
 
@@ -48,11 +48,11 @@ class AuthTest extends TestCase
         ]);
 
         $response->assertStatus(201)
-            ->assertJsonPath('data.user.role', 'organizer');
+            ->assertJsonPath('data.user.role.name', 'organizer');
 
         $this->assertDatabaseHas('users', [
             'email' => 'organizer@gmail.com',
-            'role' => 'organizer',
+            'role_id' => 2,
         ]);
     }
 
@@ -110,7 +110,7 @@ class AuthTest extends TestCase
                 'status',
                 'message',
                 'data' => [
-                    'user' => ['id', 'name', 'email', 'role'],
+                    'user' => ['id', 'name', 'email', 'role_id', 'role' => ['id', 'name']],
                     'token',
                     'token_type',
                 ],

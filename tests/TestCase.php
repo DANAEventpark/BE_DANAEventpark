@@ -8,6 +8,17 @@ use App\Models\User;
 
 abstract class TestCase extends BaseTestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        if (\Schema::hasTable('roles')) {
+            \DB::table('roles')->insertOrIgnore([
+                ['id' => 1, 'name' => 'attendee'],
+                ['id' => 2, 'name' => 'organizer'],
+            ]);
+        }
+    }
     /**
      * Set the currently logged in user for the request using JWT.
      *

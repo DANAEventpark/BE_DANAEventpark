@@ -18,7 +18,7 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->string('phone')->nullable();
-            $table->enum('role', ['attendee', 'organizer'])->default('attendee');
+            $table->foreignId('role_id')->default(1)->constrained('roles')->onDelete('cascade');
             $table->string('avatar')->nullable();
             $table->rememberToken();
             $table->timestamps();

@@ -11,6 +11,12 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        // ── 0. ROLES ───────────────────────────────────────────
+        DB::table('roles')->insert([
+            ['id' => 1, 'name' => 'attendee'],
+            ['id' => 2, 'name' => 'organizer'],
+        ]);
+
         // ── 1. CATEGORIES ─────────────────────────────────────
         $categories = [
             ['name' => 'Âm nhạc',    'image' => 'music.jpg'],
@@ -37,7 +43,7 @@ class DatabaseSeeder extends Seeder
                 'name'       => 'Organizer DANAEventSpark',
                 'email'      => 'organizer@test.com',
                 'password'   => Hash::make('password123'),
-                'role'       => 'organizer',
+                'role_id'    => 2,
                 'phone'      => '0901234567',
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -47,7 +53,7 @@ class DatabaseSeeder extends Seeder
                 'name'       => 'Attendee Test User',
                 'email'      => 'attendee@test.com',
                 'password'   => Hash::make('password123'),
-                'role'       => 'attendee',
+                'role_id'    => 1,
                 'phone'      => null,
                 'created_at' => now(),
                 'updated_at' => now(),
