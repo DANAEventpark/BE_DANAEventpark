@@ -31,8 +31,16 @@ Route::get('/events/{id}', [EventController::class, 'show']);
 Route::get('/categories', [CategoryController::class, 'index']);
 Route::get('/categories/{id}/events', [CategoryController::class, 'getEvents']);
 
+use App\Http\Controllers\OrganizerEventController;
+
 // Protected routes
 Route::middleware('auth:api')->group(function () {
     Route::post('/events/{id}/register', [RegistrationController::class, 'store']);
     Route::post('/events/{id}/reviews', [ReviewController::class, 'store']);
+
+    // Organizer Dashboard routes
+    Route::prefix('organizer')->group(function () {
+        Route::get('/dashboard/stats', [OrganizerEventController::class, 'getDashboardStats']);
+        Route::get('/dashboard/events', [OrganizerEventController::class, 'getRecentEvents']);
+    });
 });
