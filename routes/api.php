@@ -16,6 +16,12 @@ Route::prefix('auth')->group(function () {
     Route::middleware('auth:api')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/me', [AuthController::class, 'me']);
+        
+        // Profile routes
+        Route::prefix('profile')->group(function () {
+            Route::put('/info', [\App\Http\Controllers\ProfileController::class, 'updateInfo']);
+            Route::put('/password', [\App\Http\Controllers\ProfileController::class, 'updatePassword']);
+        });
     });
 });
 
