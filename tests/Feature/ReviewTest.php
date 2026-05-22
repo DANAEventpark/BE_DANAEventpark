@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Event;
 use App\Models\User;
+use App\Models\Registration;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -15,6 +16,13 @@ class ReviewTest extends TestCase
     {
         $user = User::factory()->create();
         $event = Event::factory()->create();
+
+        // Create approved registration
+        Registration::factory()->create([
+            'event_id' => $event->id,
+            'user_id' => $user->id,
+            'status' => 'approved',
+        ]);
 
         $response = $this->actingAsJwt($user)
             ->postJson("/api/events/{$event->id}/reviews", [
@@ -58,10 +66,34 @@ class ReviewTest extends TestCase
         $response->assertStatus(401);
     }
 
+    public function test_it_fails_submitting_review_if_not_registered()
+    {
+        $user = User::factory()->create();
+        $event = Event::factory()->create();
+
+        // User is authenticated but NOT registered
+        $response = $this->actingAsJwt($user)
+            ->postJson("/api/events/{$event->id}/reviews", [
+                'rating' => 5,
+                'comment' => 'Tôi chưa tham gia nhưng muốn review!',
+            ]);
+
+        $response->assertStatus(403)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Bạn phải đăng ký và được chấp nhận tham gia sự kiện này mới có thể đánh giá!');
+    }
+
     public function test_it_fails_submitting_review_with_missing_rating()
     {
         $user = User::factory()->create();
         $event = Event::factory()->create();
+
+        // Create approved registration
+        Registration::factory()->create([
+            'event_id' => $event->id,
+            'user_id' => $user->id,
+            'status' => 'approved',
+        ]);
 
         $response = $this->actingAsJwt($user)
             ->postJson("/api/events/{$event->id}/reviews", [
@@ -77,6 +109,13 @@ class ReviewTest extends TestCase
         $user = User::factory()->create();
         $event = Event::factory()->create();
 
+        // Create approved registration
+        Registration::factory()->create([
+            'event_id' => $event->id,
+            'user_id' => $user->id,
+            'status' => 'approved',
+        ]);
+
         $response = $this->actingAsJwt($user)
             ->postJson("/api/events/{$event->id}/reviews", [
                 'rating' => 4,
@@ -90,6 +129,13 @@ class ReviewTest extends TestCase
     {
         $user = User::factory()->create();
         $event = Event::factory()->create();
+
+        // Create approved registration
+        Registration::factory()->create([
+            'event_id' => $event->id,
+            'user_id' => $user->id,
+            'status' => 'approved',
+        ]);
 
         // Rating > 5
         $response1 = $this->actingAsJwt($user)
@@ -123,3 +169,4 @@ class ReviewTest extends TestCase
         $response->assertStatus(404);
     }
 }
+
