@@ -49,11 +49,43 @@ class AuthService
     {
         $user = User::with('role')->where('email', $data['email'])->first();
 
-        if (!$user || !Hash::check($data['password'], $user->password)) {
+        if (!$user || !$user->password || !Hash::check($data['password'], $user->password)) {
             throw ValidationException::withMessages([
                 'email' => ['Email hoặc mật khẩu không đúng'],
             ]);
         }
+
+        $token = JWTAuth::fromUser($user);
+
+        return [
+            'user' => $user,
+            'token' => $token,
+        ];
+    }
+
+    /**
+     * Handle user google login.
+     *
+     * @param array $data
+     * @return array
+     */
+    public function googleLogin(array $data): array
+    {
+        $user = User::where('email', $data['email'])->first();
+
+        if (!$user) {
+            $user = User::create([
+                'name'      => $data['name'],
+                'email'     => $data['email'],
+                'google_id' => $data['google_id'],
+                'role_id'   => 1, // Attendee role
+                'password'  => null,
+            ]);
+        } elseif (!$user->google_id) {
+            $user->update(['google_id' => $data['google_id']]);
+        }
+
+        $user->load('role');
 
         $token = JWTAuth::fromUser($user);
 
