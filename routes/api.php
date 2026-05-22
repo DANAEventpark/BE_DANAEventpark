@@ -42,5 +42,6 @@ Route::middleware('auth:api')->group(function () {
     Route::prefix('organizer')->group(function () {
         Route::get('/dashboard/stats', [OrganizerEventController::class, 'getDashboardStats']);
         Route::get('/dashboard/events', [OrganizerEventController::class, 'getRecentEvents']);
+        Route::get('/events/{id}', [OrganizerEventController::class, 'show']);
     });
 });

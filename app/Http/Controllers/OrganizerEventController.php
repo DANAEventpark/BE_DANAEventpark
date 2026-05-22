@@ -25,17 +25,17 @@ class OrganizerEventController extends Controller
 
         // Điểm đánh giá trung bình
         $events = Event::where('organizer_id', $organizerId)->with('reviews')->get();
-        
+
         $totalRating = 0;
         $totalReviews = 0;
-        
+
         foreach ($events as $event) {
             foreach ($event->reviews as $review) {
                 $totalRating += $review->rating;
                 $totalReviews++;
             }
         }
-        
+
         $averageRating = $totalReviews > 0 ? round($totalRating / $totalReviews, 1) : 0;
 
         return response()->json([
@@ -75,5 +75,58 @@ class OrganizerEventController extends Controller
             'success' => true,
             'data' => $events
         ]);
+    }
+
+    public function show($id)
+    {
+        // Lấy sự kiện cùng mối quan hệ đăng ký và thông tin user tương ứng
+        $event = Event::with(['category', 'registrations.user'])->findOrFail($id);
+
+        // 1. Lọc và định dạng danh sách người đã đăng ký chính thức (confirmed)
+        $confirmedList = $event->registrations
+            ->where('status', 'confirmed')
+            ->map(function ($registration) {
+                return [
+                    'name' => $registration->user->name,
+                    'email' => $registration->user->email,
+                    'registered_at' => $registration->created_at->format('d/m/Y H:i'),
+                ];
+            })->values(); // Sử dụng values() để reset lại index của mảng sau khi filter
+
+        // 2. Lọc và định dạng danh sách người đang nằm ở hàng đợi (waitlist)
+        $waitlistList = $event->registrations
+            ->where('status', 'waitlist')
+            ->sortBy('created_at') // Sắp xếp theo thứ tự đăng ký sớm nhất lên đầu để đôn ghế chuẩn FIFO
+            ->map(function ($registration) {
+                return [
+                    'name' => $registration->user->name,
+                    'email' => $registration->user->email,
+                    'registered_at' => $registration->created_at->format('d/m/Y H:i'),
+                ];
+            })->values();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $event->id,
+                'title' => $event->title,
+                'description' => $event->description,
+                'location' => $event->location,
+                'start_time' => $event->start_time,
+                'end_time' => $event->end_time,
+                'capacity' => $event->capacity,
+                'status' => $event->status,
+                'created_at' => $event->created_at->format('d/m/Y'),
+                'category_name' => $event->category ? $event->category->name : 'N/A',
+
+                // Số lượng tổng quan để hiển thị ở khối Widget bên phải
+                'confirmed_count' => $confirmedList->count(),
+                'waitlist_count' => $waitlistList->count(),
+
+                // Trả về 2 mảng danh sách người dùng riêng biệt cho cấu trúc bảng
+                'confirmed_users' => $confirmedList,
+                'waitlist_users' => $waitlistList
+            ]
+        ], 200);
     }
 }
