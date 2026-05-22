@@ -77,6 +77,34 @@ class OrganizerEventController extends Controller
         ]);
     }
 
+    /**
+     * Lấy danh sách tất cả sự kiện của Organizer
+     */
+    public function index(Request $request)
+    {
+        $organizerId = $request->user()->id;
+
+        $events = Event::where('organizer_id', $organizerId)
+            ->withCount('registrations')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($event) {
+                return [
+                    'id' => $event->id,
+                    'title' => $event->title,
+                    'start_time' => $event->start_time,
+                    'registrations_count' => $event->registrations_count,
+                    'capacity' => $event->capacity,
+                    'status' => $event->status,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => $events
+        ]);
+    }
+
     public function show($id)
     {
         // Lấy sự kiện cùng mối quan hệ đăng ký và thông tin user tương ứng
