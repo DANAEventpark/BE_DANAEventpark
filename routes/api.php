@@ -12,6 +12,10 @@ Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/google', [AuthController::class, 'googleLogin']);
+    
+    // Email verification routes
+    Route::get('/email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail']);
+    Route::post('/email/verification-notification', [AuthController::class, 'resendVerificationEmail']);
 
     Route::middleware('auth:api')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
