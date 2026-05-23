@@ -66,6 +66,28 @@ class AuthController extends Controller
         }
     }
 
+    public function googleLogin(Request $request)
+    {
+        $data = $request->validate([
+            'email'     => 'required|string|email',
+            'name'      => 'required|string',
+            'google_id' => 'required|string',
+            'avatar'    => 'nullable|string',
+        ]);
+
+        $result = $this->authService->googleLogin($data);
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Đăng nhập thành công',
+            'data'    => [
+                'user'       => $result['user'],
+                'token'      => $result['token'],
+                'token_type' => 'Bearer',
+            ],
+        ], 200);
+    }
+
     public function logout(Request $request)
     {
         $this->authService->logout($request->user());
