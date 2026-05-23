@@ -27,6 +27,7 @@ Route::get('/events', [EventController::class, 'index']);
 
 // Event Detail (REQ_09)
 Route::get('/events/{id}', [EventController::class, 'show']);
+Route::get('/events/{id}/reviews/stream', [ReviewController::class, 'stream']);
 
 // Categories (REQ_13)
 Route::get('/categories', [CategoryController::class, 'index']);

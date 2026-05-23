@@ -36,7 +36,7 @@ class DatabaseSeeder extends Seeder
         // ── 2. USERS ───────────────────────────────────────────
         $organizerId = Str::uuid()->toString();
         $attendeeId  = Str::uuid()->toString();
-
+        $attendeeId1  = Str::uuid()->toString();
         DB::table('users')->insert([
             [
                 'id'         => $organizerId,
@@ -53,6 +53,16 @@ class DatabaseSeeder extends Seeder
                 'name'       => 'Attendee Test User',
                 'email'      => 'attendee@test.com',
                 'password'   => Hash::make('password123'),
+                'role_id'    => 1,
+                'phone'      => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+             [
+                'id'         => $attendeeId1,
+                'name'       => 'Thuy Trang',
+                'email'      => 'thuytrangpnv27@gmail.com',
+                'password'   => Hash::make('12345678'),
                 'role_id'    => 1,
                 'phone'      => null,
                 'created_at' => now(),
