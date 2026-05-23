@@ -22,7 +22,7 @@ class RegistrationTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonPath('success', true)
-            ->assertJsonPath('message', 'Đăng ký thành công.')
+            ->assertJsonPath('message', 'Đăng ký tham gia sự kiện thành công!')
             ->assertJsonStructure([
                 'success',
                 'message',
@@ -62,10 +62,10 @@ class RegistrationTest extends TestCase
 
         $response->assertStatus(400)
             ->assertJsonPath('success', false)
-            ->assertJsonPath('message', 'Bạn đã đăng ký sự kiện này.');
+            ->assertJsonPath('message', 'Bạn đã đăng ký sự kiện này rồi (Trạng thái: Chính thức).');
     }
 
-    public function test_it_fails_registration_when_capacity_exceeded()
+    public function test_it_registers_as_pending_when_capacity_exceeded()
     {
         $user = User::factory()->create();
         $otherUser = User::factory()->create();
@@ -82,9 +82,16 @@ class RegistrationTest extends TestCase
         $response = $this->actingAsJwt($user)
             ->postJson("/api/events/{$event->id}/register");
 
-        $response->assertStatus(400)
-            ->assertJsonPath('success', false)
-            ->assertJsonPath('message', 'Sự kiện đã hết chỗ.');
+        $response->assertStatus(200)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('message', 'Sự kiện đã đủ chỗ. Bạn đã được thêm vào danh sách chờ.')
+            ->assertJsonPath('data.status', 'pending');
+
+        $this->assertDatabaseHas('registrations', [
+            'event_id' => $event->id,
+            'user_id' => $user->id,
+            'status' => 'pending',
+        ]);
     }
 
     public function test_it_returns_404_when_registering_for_non_existent_event()

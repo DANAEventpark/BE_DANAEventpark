@@ -75,9 +75,23 @@ class EventController extends Controller
             'reviews.user:id,name,avatar'
         ])->findOrFail($id);
 
+        // Check registration for current authenticated user
+        $userRegistration = null;
+        try {
+            $user = auth('api')->user();
+            if ($user) {
+                $userRegistration = \App\Models\Registration::where('event_id', $id)
+                    ->where('user_id', $user->id)
+                    ->first();
+            }
+        } catch (\Exception $e) {
+            // Ignore auth errors
+        }
+
         return response()->json([
             'success' => true,
-            'data' => $event
+            'data' => $event,
+            'user_registration' => $userRegistration
         ]);
     }
 
