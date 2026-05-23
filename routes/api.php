@@ -32,6 +32,7 @@ Route::get('/categories', [CategoryController::class, 'index']);
 Route::get('/categories/{id}/events', [CategoryController::class, 'getEvents']);
 
 use App\Http\Controllers\OrganizerEventController;
+use App\Http\Controllers\AttendeeController;
 
 // Protected routes
 Route::middleware('auth:api')->group(function () {
@@ -42,5 +43,13 @@ Route::middleware('auth:api')->group(function () {
     Route::prefix('organizer')->group(function () {
         Route::get('/dashboard/stats', [OrganizerEventController::class, 'getDashboardStats']);
         Route::get('/dashboard/events', [OrganizerEventController::class, 'getRecentEvents']);
+    });
+
+    // Attendee Dashboard routes (REQ_11)
+    Route::prefix('attendee')->group(function () {
+        Route::get('/dashboard/stats', [AttendeeController::class, 'getDashboardStats']);
+        Route::get('/dashboard/registrations', [AttendeeController::class, 'getRegistrations']);
+        Route::get('/dashboard/waitlist', [AttendeeController::class, 'getWaitlist']);
+        Route::get('/dashboard/cancelled', [AttendeeController::class, 'getCancelledRegistrations']);
     });
 });
