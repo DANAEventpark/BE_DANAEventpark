@@ -112,7 +112,7 @@ class OrganizerEventController extends Controller
 
         // 1. Lọc và định dạng danh sách người đã đăng ký chính thức (confirmed)
         $confirmedList = $event->registrations
-            ->where('status', 'confirmed')
+            ->where('status', 'approved')
             ->map(function ($registration) {
                 return [
                     'name' => $registration->user->name,
