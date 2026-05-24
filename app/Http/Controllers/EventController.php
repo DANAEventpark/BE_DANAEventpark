@@ -72,7 +72,9 @@ class EventController extends Controller
                 $query->where('status', 'approved')
                       ->with('user:id,name,avatar');
             },
-            'reviews.user:id,name,avatar'
+            'reviews' => function($query) {
+                $query->with('user:id,name,avatar')->latest('id');
+            }
         ])->findOrFail($id);
 
         // Check registration for current authenticated user
