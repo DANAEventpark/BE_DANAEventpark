@@ -47,12 +47,14 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/dashboard/events', [OrganizerEventController::class, 'getRecentEvents']);
         Route::get('/events', [OrganizerEventController::class, 'index']);
         Route::get('/events/{id}', [OrganizerEventController::class, 'show']);
+        Route::put('/events/{id}/status', [OrganizerEventController::class, 'updateStatus']);
     });
 
     // Attendee Dashboard routes (REQ_11)
     Route::prefix('attendee')->group(function () {
         Route::get('/dashboard/stats', [AttendeeController::class, 'getDashboardStats']);
         Route::get('/dashboard/registrations', [AttendeeController::class, 'getRegistrations']);
+        Route::get('/dashboard/done', [AttendeeController::class, 'getDoneRegistrations']);
         Route::get('/dashboard/waitlist', [AttendeeController::class, 'getWaitlist']);
         Route::get('/dashboard/cancelled', [AttendeeController::class, 'getCancelledRegistrations']);
     });

@@ -14,29 +14,20 @@ class OrganizerEventController extends Controller
     {
         $organizerId = $request->user()->id;
 
-        // Tổng sự kiện do organizer này tổ chức
+        // 1. Tổng sự kiện do organizer này tổ chức
         $totalEvents = Event::where('organizer_id', $organizerId)->count();
 
-        // Tổng người đăng ký vào tất cả sự kiện của organizer này
-        $totalRegistrations = Event::where('organizer_id', $organizerId)
-            ->withCount('registrations')
-            ->get()
-            ->sum('registrations_count');
+        // 2. Tối ưu: Dùng Join hoặc whereHas đếm trực tiếp trên CSDL thay vì tải toàn bộ sự kiện vào RAM
+        $totalRegistrations = \App\Models\Registration::whereHas('event', function($query) use ($organizerId) {
+             $query->where('organizer_id', $organizerId);
+        })->count();
 
-        // Điểm đánh giá trung bình
-        $events = Event::where('organizer_id', $organizerId)->with('reviews')->get();
+        // 3. Tối ưu: Tính trung bình trực tiếp bằng SQL Aggregate Function thay vì vòng lặp foreach trong PHP
+        $avgRatingRaw = \App\Models\Review::whereHas('event', function($query) use ($organizerId) {
+             $query->where('organizer_id', $organizerId);
+        })->avg('rating');
 
-        $totalRating = 0;
-        $totalReviews = 0;
-
-        foreach ($events as $event) {
-            foreach ($event->reviews as $review) {
-                $totalRating += $review->rating;
-                $totalReviews++;
-            }
-        }
-
-        $averageRating = $totalReviews > 0 ? round($totalRating / $totalReviews, 1) : 0;
+        $averageRating = $avgRatingRaw ? round($avgRatingRaw, 1) : 0;
 
         return response()->json([
             'success' => true,
@@ -107,8 +98,8 @@ class OrganizerEventController extends Controller
 
     public function show($id)
     {
-        // Lấy sự kiện cùng mối quan hệ đăng ký và thông tin user tương ứng
-        $event = Event::with(['category', 'registrations.user'])->findOrFail($id);
+        // Lấy sự kiện cùng mối quan hệ đăng ký, thông tin user tương ứng và Đánh giá (reviews)
+        $event = Event::with(['category', 'registrations.user', 'reviews.user:id,name,avatar'])->findOrFail($id);
 
         // 1. Lọc và định dạng danh sách người đã đăng ký chính thức (confirmed)
         $confirmedList = $event->registrations
@@ -151,10 +142,52 @@ class OrganizerEventController extends Controller
                 'confirmed_count' => $confirmedList->count(),
                 'waitlist_count' => $waitlistList->count(),
 
-                // Trả về 2 mảng danh sách người dùng riêng biệt cho cấu trúc bảng
                 'confirmed_users' => $confirmedList,
-                'waitlist_users' => $waitlistList
+                'waitlist_users' => $waitlistList,
+
+                // Thêm dữ liệu Đánh giá
+                'reviews' => $event->reviews->map(function ($review) {
+                    return [
+                        'id' => $review->id,
+                        'rating' => $review->rating,
+                        'comment' => $review->comment,
+                        'created_at' => $review->created_at->format('d/m/Y H:i'),
+                        'user' => [
+                            'name' => $review->user->name ?? 'Người dùng',
+                            'avatar' => $review->user->avatar ?? null
+                        ]
+                    ];
+                })->sortByDesc('created_at')->values(),
+                'average_rating' => $event->reviews->count() > 0 ? round($event->reviews->avg('rating'), 1) : null,
+                'total_reviews' => $event->reviews->count()
             ]
         ], 200);
+    }
+
+    public function updateStatus(Request $request, $id)
+    {
+        $organizerId = $request->user()->id;
+        $event = Event::where('organizer_id', $organizerId)->findOrFail($id);
+
+        $request->validate([
+            'status' => 'required|in:draft,published,cancelled'
+        ]);
+
+        if ($event->status === 'done') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sự kiện đã hoàn thành và bị khóa, không thể thay đổi trạng thái.'
+            ], 403);
+        }
+
+        $event->update([
+            'status' => $request->status
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Cập nhật trạng thái thành công',
+            'data' => $event
+        ]);
     }
 }

@@ -18,7 +18,7 @@ class EventController extends Controller
             'category:id,name,image',
             'organizer:id,name',
         ])
-        ->where('status', 'published');
+        ->whereIn('status', ['published', 'done']);
 
         // Search by title, description, location
         if ($search = $request->query('search')) {
@@ -44,7 +44,14 @@ class EventController extends Controller
             'today' => $query->whereDate('start_time', $now->toDateString()),
             'this_week' => $query->whereBetween('start_time', [$now, $now->copy()->endOfWeek()]),
             'this_month' => $query->whereBetween('start_time', [$now, $now->copy()->endOfMonth()]),
-            default => $query->where('start_time', '>=', $now), // 'upcoming'
+            'next_month' => $query->whereBetween('start_time', [
+                $now->copy()->addMonth()->startOfMonth(), 
+                $now->copy()->addMonth()->endOfMonth()
+            ]),
+            'past' => $query->where(function($q) use ($now) {
+                $q->where('end_time', '<', $now)->orWhere('status', 'done');
+            }),
+            default => $query->where('start_time', '>=', $now)->where('status', 'published'), // 'upcoming'
         };
 
         $events = $query->orderBy('start_time', 'asc')

@@ -25,8 +25,20 @@ class AttendeeController extends Controller
     {
         $user = Auth::user();
 
+        // Đã đăng ký (nhưng sự kiện chưa done)
         $registered = Registration::where('user_id', $user->id)
             ->where('status', 'approved')
+            ->whereHas('event', function ($q) {
+                $q->where('status', '!=', 'done');
+            })
+            ->count();
+
+        // Đã tham gia (sự kiện đã done)
+        $done = Registration::where('user_id', $user->id)
+            ->where('status', 'approved')
+            ->whereHas('event', function ($q) {
+                $q->where('status', 'done');
+            })
             ->count();
 
         $waitlist = Registration::where('user_id', $user->id)
@@ -41,6 +53,7 @@ class AttendeeController extends Controller
             'success' => true,
             'data'    => [
                 'registered' => $registered,
+                'done'       => $done,
                 'waitlist'   => $waitlist,
                 'cancelled'  => $cancelled,
             ],
@@ -56,6 +69,32 @@ class AttendeeController extends Controller
     {
         $user  = Auth::user();
         $query = $this->baseQuery($user->id, 'approved');
+
+        // Loại bỏ các sự kiện đã done
+        $query->whereHas('event', function ($q) {
+            $q->where('status', '!=', 'done');
+        });
+
+        $query = $this->applyFilters($query, $request);
+
+        $registrations = $query->orderBy('registrations.created_at', 'desc')->paginate(6);
+
+        return response()->json($registrations);
+    }
+
+    /**
+     * GET /api/attendee/dashboard/done
+     * Danh sách sự kiện đã tham gia và đã kết thúc (status = done).
+     */
+    public function getDoneRegistrations(Request $request)
+    {
+        $user  = Auth::user();
+        $query = $this->baseQuery($user->id, 'approved');
+
+        // Chỉ lấy các sự kiện đã done
+        $query->whereHas('event', function ($q) {
+            $q->where('status', 'done');
+        });
 
         $query = $this->applyFilters($query, $request);
 

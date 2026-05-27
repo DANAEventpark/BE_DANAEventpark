@@ -94,7 +94,8 @@ class ReviewController extends Controller
                     flush();
                 }
 
-                sleep(1);
+                // Tối ưu hóa: Ngủ 3 giây thay vì 1 giây để giảm tải truy vấn liên tục (Polling) xuống Database 3 lần.
+                sleep(3);
                 $retryCount++;
             }
         }, 200, [
