@@ -31,7 +31,7 @@ class RegistrationController extends Controller
                                 ->where('user_id', $user->id)
                                 ->first();
 
-        if ($existing) {
+        if ($existing) { 
             return response()->json([
                 'success' => false,
                 'message' => 'Bạn đã đăng ký sự kiện này.'
