@@ -64,7 +64,7 @@ class OrganizerEventController extends Controller
                 return [
                     'id' => $event->id,
                     'title' => $event->title,
-                    'start_time' => $event->start_time,
+                    'start_time' => $event->start_time ? $event->start_time->format('Y-m-d H:i:s') : null,
                     'registrations_count' => $event->registrations_count,
                     'capacity' => $event->capacity,
                     'status' => $event->status,
@@ -92,7 +92,7 @@ class OrganizerEventController extends Controller
                 return [
                     'id' => $event->id,
                     'title' => $event->title,
-                    'start_time' => $event->start_time,
+                    'start_time' => $event->start_time ? $event->start_time->format('Y-m-d H:i:s') : null,
                     'registrations_count' => $event->registrations_count,
                     'capacity' => $event->capacity,
                     'status' => $event->status,
@@ -140,8 +140,8 @@ class OrganizerEventController extends Controller
                 'title' => $event->title,
                 'description' => $event->description,
                 'location' => $event->location,
-                'start_time' => $event->start_time,
-                'end_time' => $event->end_time,
+                'start_time' => $event->start_time ? $event->start_time->format('Y-m-d H:i:s') : null,
+                'end_time' => $event->end_time ? $event->end_time->format('Y-m-d H:i:s') : null,
                 'capacity' => $event->capacity,
                 'status' => $event->status,
                 'created_at' => $event->created_at->format('d/m/Y'),
