@@ -22,7 +22,7 @@ class AuthController extends Controller
     {
         $data = $request->validate([
             'name'     => 'required|string|max:255',
-            'email'    => 'required|string|email|max:255|unique:users',
+            'email'    => ['required', 'string', 'email:rfc' . (app()->environment('testing') ? '' : ',dns'), 'max:255', 'unique:users'],
             'password' => 'required|string|min:8',
             'phone'    => 'nullable|string|max:15',
             'role'     => 'in:attendee,organizer',
@@ -127,24 +127,25 @@ class AuthController extends Controller
     public function verifyEmail(Request $request, $id, $hash)
     {
         $user = User::find($id);
+        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
 
         if (!$user) {
-            return response()->json(['message' => 'Không tìm thấy người dùng'], 404);
+            return redirect($frontendUrl . '/login?error=user_not_found');
         }
 
         if (!hash_equals((string) $hash, sha1($user->getEmailForVerification()))) {
-            return response()->json(['message' => 'Link xác nhận không hợp lệ hoặc đã hết hạn'], 400);
+            return redirect($frontendUrl . '/login?error=invalid_link');
         }
 
         if ($user->hasVerifiedEmail()) {
-            return response()->json(['message' => 'Email đã được xác nhận từ trước'], 200);
+            return redirect($frontendUrl . '/login?verified=already');
         }
 
         if ($user->markEmailAsVerified()) {
             event(new Verified($user));
         }
 
-        return response()->json(['message' => 'Xác thực email thành công'], 200);
+        return redirect($frontendUrl . '/login?verified=success');
     }
 
     public function resendVerificationEmail(Request $request)

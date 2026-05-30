@@ -72,14 +72,14 @@ class RegistrationController extends Controller
             ], 400);
         }
 
-        // Kiểm tra thời hạn hủy (phải trước 1 ngày khi sự kiện diễn ra)
+        // Kiểm tra thời hạn hủy (chưa tới hạn đóng đăng ký)
         $now = now();
-        $startTime = $event->start_time;
+        $deadline = $event->registration_deadline;
 
-        if ($now->greaterThanOrEqualTo($startTime->copy()->subDay())) {
+        if ($deadline && $now->greaterThanOrEqualTo($deadline)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Không thể hủy đăng ký. Thời hạn hủy đăng ký đã hết (phải trước ít nhất 1 ngày khi sự kiện diễn ra).'
+                'message' => 'Không thể hủy đăng ký. Đã qua hạn đóng đăng ký của sự kiện này.'
             ], 400);
         }
 

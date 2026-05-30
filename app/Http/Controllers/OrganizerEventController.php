@@ -123,7 +123,7 @@ class OrganizerEventController extends Controller
 
         // 2. Lọc và định dạng danh sách người đang nằm ở hàng đợi (waitlist)
         $waitlistList = $event->registrations
-            ->where('status', 'waitlist')
+            ->where('status', 'pending')
             ->sortBy('created_at') // Sắp xếp theo thứ tự đăng ký sớm nhất lên đầu để đôn ghế chuẩn FIFO
             ->map(function ($registration) {
                 return [
