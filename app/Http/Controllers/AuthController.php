@@ -30,7 +30,7 @@ class AuthController extends Controller
 
         return response()->json([
             'status'  => 'success',
-            'message' => 'Đăng ký thành công',
+            'message' => __('messages.register_success'),
             'data'    => [
                 'user'       => $result['user'],
                 'token'      => $result['token'],
@@ -51,7 +51,7 @@ class AuthController extends Controller
 
             return response()->json([
                 'status'  => 'success',
-                'message' => 'Đăng nhập thành công',
+                'message' => __('messages.login_success'),
                 'data'    => [
                     'user'       => $result['user'],
                     'token'      => $result['token'],
@@ -61,7 +61,7 @@ class AuthController extends Controller
         } catch (ValidationException $e) {
             return response()->json([
                 'status'  => 'error',
-                'message' => $e->errors()['email'][0] ?? 'Email hoặc mật khẩu không đúng',
+                'message' => $e->errors()['email'][0] ?? __('messages.login_failed'),
             ], 401);
         }
     }
@@ -79,7 +79,7 @@ class AuthController extends Controller
 
         return response()->json([
             'status'  => 'success',
-            'message' => 'Đăng nhập thành công',
+            'message' => __('messages.login_success'),
             'data'    => [
                 'user'       => $result['user'],
                 'token'      => $result['token'],
@@ -94,7 +94,7 @@ class AuthController extends Controller
 
         return response()->json([
             'status'  => 'success',
-            'message' => 'Đăng xuất thành công',
+            'message' => __('messages.logout_success'),
         ], 200);
     }
 

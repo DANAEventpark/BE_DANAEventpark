@@ -20,10 +20,12 @@ class RegistrationController extends Controller
                                 ->first();
 
         if ($existing) {
-            $statusText = $existing->status === 'approved' ? 'Chính thức' : ($existing->status === 'pending' ? 'Đang chờ' : 'Đã hủy');
+            $statusText = $existing->status === 'approved' 
+                ? __('messages.approved') 
+                : ($existing->status === 'pending' ? __('messages.pending') : __('messages.cancelled'));
             return response()->json([
                 'success' => false,
-                'message' => "Bạn đã đăng ký sự kiện này rồi (Trạng thái: {$statusText})."
+                'message' => __('messages.already_registered', ['status' => $statusText])
             ], 400);
         }
 
@@ -35,10 +37,10 @@ class RegistrationController extends Controller
         // Determine status based on capacity
         if ($approvedCount < $event->capacity) {
             $status = 'approved';
-            $message = 'Đăng ký tham gia sự kiện thành công!';
+            $message = __('messages.register_event_success');
         } else {
             $status = 'pending';
-            $message = 'Sự kiện đã đủ chỗ. Bạn đã được thêm vào danh sách chờ.';
+            $message = __('messages.register_event_waitlist');
         }
 
         $registration = Registration::create([

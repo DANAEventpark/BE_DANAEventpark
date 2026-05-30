@@ -175,4 +175,30 @@ class AuthTest extends TestCase
             ->assertJsonPath('status', 'success')
             ->assertJsonPath('message', 'Đăng xuất thành công');
     }
+
+    public function test_it_returns_english_messages_when_accept_language_header_is_en()
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAsJwt($user)
+            ->withHeader('Accept-Language', 'en')
+            ->postJson('/api/auth/logout');
+
+        $response->assertStatus(200)
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('message', 'Logout successful');
+    }
+
+    public function test_it_returns_vietnamese_messages_when_accept_language_header_is_vi()
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAsJwt($user)
+            ->withHeader('Accept-Language', 'vi')
+            ->postJson('/api/auth/logout');
+
+        $response->assertStatus(200)
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('message', 'Đăng xuất thành công');
+    }
 }

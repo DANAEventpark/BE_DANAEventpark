@@ -29,7 +29,7 @@ class ReviewController extends Controller
         if (!$isRegistered) {
             return response()->json([
                 'success' => false,
-                'message' => 'Bạn phải đăng ký và được chấp nhận tham gia sự kiện này mới có thể đánh giá!'
+                'message' => __('messages.review_forbidden')
             ], 403);
         }
 
@@ -45,7 +45,7 @@ class ReviewController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Bình luận thành công.',
+            'message' => __('messages.review_success'),
             'data' => $review
         ]);
     }

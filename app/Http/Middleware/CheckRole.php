@@ -18,7 +18,7 @@ class CheckRole
         if (! $request->user() || $request->user()->role?->name !== $role) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Forbidden'
+                'message' => __('messages.forbidden')
             ], 403);
         }
 
