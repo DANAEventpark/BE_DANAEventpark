@@ -53,4 +53,46 @@ class RegistrationController extends Controller
             'data' => $registration
         ]);
     }
+
+    public function cancel($eventId)
+    {
+        $user = Auth::user();
+        $event = Event::findOrFail($eventId);
+
+        // Tìm đăng ký hiện tại có trạng thái approved hoặc pending của người dùng này
+        $registration = Registration::where('event_id', $eventId)
+                                    ->where('user_id', $user->id)
+                                    ->whereIn('status', ['approved', 'pending'])
+                                    ->first();
+
+        if (!$registration) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn chưa đăng ký tham gia sự kiện này hoặc đăng ký đã bị hủy trước đó.'
+            ], 400);
+        }
+
+        // Kiểm tra thời hạn hủy (phải trước 1 ngày khi sự kiện diễn ra)
+        $now = now();
+        $startTime = $event->start_time;
+
+        if ($now->greaterThanOrEqualTo($startTime->copy()->subDay())) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không thể hủy đăng ký. Thời hạn hủy đăng ký đã hết (phải trước ít nhất 1 ngày khi sự kiện diễn ra).'
+            ], 400);
+        }
+
+        // Cập nhật trạng thái thành cancelled
+        $registration->update([
+            'status' => 'cancelled'
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Hủy đăng ký tham gia sự kiện thành công!',
+            'data' => $registration
+        ]);
+    }
 }
+

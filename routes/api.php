@@ -49,6 +49,7 @@ use App\Http\Controllers\AttendeeController;
 // Protected routes
 Route::middleware('auth:api')->group(function () {
     Route::post('/events/{id}/register', [RegistrationController::class, 'store']);
+    Route::post('/events/{id}/cancel', [RegistrationController::class, 'cancel']);
     Route::post('/events/{id}/reviews', [ReviewController::class, 'store']);
 
     // Organizer Dashboard routes
