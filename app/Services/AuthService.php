@@ -55,6 +55,12 @@ class AuthService
             ]);
         }
 
+        if (!$user->hasVerifiedEmail()) {
+            throw ValidationException::withMessages([
+                'email' => ['email_unverified'],
+            ]);
+        }
+
         $token = JWTAuth::fromUser($user);
 
         return [
@@ -81,6 +87,7 @@ class AuthService
                 'role_id'   => 1, // Attendee role
                 'password'  => null,
             ]);
+            $user->markEmailAsVerified();
         } elseif (!$user->google_id) {
             $user->update(['google_id' => $data['google_id']]);
         }

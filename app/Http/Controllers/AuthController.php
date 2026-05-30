@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Services\AuthService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Auth\Events\Registered;
+use Illuminate\Auth\Events\Verified;
+use App\Models\User;
 
 class AuthController extends Controller
 {
@@ -27,6 +30,9 @@ class AuthController extends Controller
 
 
         $result = $this->authService->register($data);
+
+        // Fire Registered event to send verification email
+        event(new Registered($result['user']));
 
         return response()->json([
             'status'  => 'success',
@@ -59,9 +65,19 @@ class AuthController extends Controller
                 ],
             ], 200);
         } catch (ValidationException $e) {
+            $msg = $e->errors()['email'][0] ?? 'Email hoặc mật khẩu không đúng';
+            
+            if ($msg === 'email_unverified') {
+                return response()->json([
+                    'status' => 'error',
+                    'error_code' => 'EMAIL_UNVERIFIED',
+                    'message' => 'Vui lòng kiểm tra hộp thư và xác thực email trước khi đăng nhập.',
+                ], 403);
+            }
+
             return response()->json([
                 'status'  => 'error',
-                'message' => $e->errors()['email'][0] ?? 'Email hoặc mật khẩu không đúng',
+                'message' => $msg,
             ], 401);
         }
     }
@@ -106,5 +122,49 @@ class AuthController extends Controller
                 'user' => $request->user()->load('role'),
             ],
         ], 200);
+    }
+
+    public function verifyEmail(Request $request, $id, $hash)
+    {
+        $user = User::find($id);
+
+        if (!$user) {
+            return response()->json(['message' => 'Không tìm thấy người dùng'], 404);
+        }
+
+        if (!hash_equals((string) $hash, sha1($user->getEmailForVerification()))) {
+            return response()->json(['message' => 'Link xác nhận không hợp lệ hoặc đã hết hạn'], 400);
+        }
+
+        if ($user->hasVerifiedEmail()) {
+            return response()->json(['message' => 'Email đã được xác nhận từ trước'], 200);
+        }
+
+        if ($user->markEmailAsVerified()) {
+            event(new Verified($user));
+        }
+
+        return response()->json(['message' => 'Xác thực email thành công'], 200);
+    }
+
+    public function resendVerificationEmail(Request $request)
+    {
+        $data = $request->validate([
+            'email' => 'required|email'
+        ]);
+
+        $user = User::where('email', $data['email'])->first();
+
+        if (!$user) {
+            return response()->json(['message' => 'Không tìm thấy người dùng'], 404);
+        }
+
+        if ($user->hasVerifiedEmail()) {
+            return response()->json(['message' => 'Email đã được xác nhận từ trước'], 400);
+        }
+
+        $user->sendEmailVerificationNotification();
+
+        return response()->json(['message' => 'Đã gửi lại email xác nhận. Vui lòng kiểm tra hộp thư.'], 200);
     }
 }

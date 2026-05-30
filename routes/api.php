@@ -12,10 +12,20 @@ Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/google', [AuthController::class, 'googleLogin']);
+    
+    // Email verification routes
+    Route::get('/email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail']);
+    Route::post('/email/verification-notification', [AuthController::class, 'resendVerificationEmail']);
 
     Route::middleware('auth:api')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/me', [AuthController::class, 'me']);
+        
+        // Profile routes
+        Route::prefix('profile')->group(function () {
+            Route::put('/info', [\App\Http\Controllers\ProfileController::class, 'updateInfo']);
+            Route::put('/password', [\App\Http\Controllers\ProfileController::class, 'updatePassword']);
+        });
     });
 });
 
