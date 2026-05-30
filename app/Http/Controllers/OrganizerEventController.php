@@ -64,7 +64,7 @@ class OrganizerEventController extends Controller
                 return [
                     'id' => $event->id,
                     'title' => $event->title,
-                    'start_time' => $event->start_time,
+                    'start_time' => $event->start_time ? $event->start_time->format('Y-m-d H:i:s') : null,
                     'registrations_count' => $event->registrations_count,
                     'capacity' => $event->capacity,
                     'status' => $event->status,
@@ -92,7 +92,7 @@ class OrganizerEventController extends Controller
                 return [
                     'id' => $event->id,
                     'title' => $event->title,
-                    'start_time' => $event->start_time,
+                    'start_time' => $event->start_time ? $event->start_time->format('Y-m-d H:i:s') : null,
                     'registrations_count' => $event->registrations_count,
                     'capacity' => $event->capacity,
                     'status' => $event->status,
@@ -140,12 +140,14 @@ class OrganizerEventController extends Controller
                 'title' => $event->title,
                 'description' => $event->description,
                 'location' => $event->location,
-                'start_time' => $event->start_time,
-                'end_time' => $event->end_time,
+                'start_time' => $event->start_time ? $event->start_time->format('Y-m-d H:i:s') : null,
+                'end_time' => $event->end_time ? $event->end_time->format('Y-m-d H:i:s') : null,
                 'capacity' => $event->capacity,
                 'status' => $event->status,
                 'created_at' => $event->created_at->format('d/m/Y'),
                 'category_name' => $event->category ? $event->category->name : 'N/A',
+                'category_id' => $event->category_id,
+                'image' => $event->image,
 
                 // Số lượng tổng quan để hiển thị ở khối Widget bên phải
                 'confirmed_count' => $confirmedList->count(),
@@ -156,5 +158,90 @@ class OrganizerEventController extends Controller
                 'waitlist_users' => $waitlistList
             ]
         ], 200);
+    }
+
+    public function store(Request $request)
+    {
+        $organizerId = $request->user()->id;
+
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'start_time' => 'required|date',
+            'end_time' => 'required|date|after:start_time',
+            'location' => 'required|string|max:255',
+            'capacity' => 'required|integer|min:1',
+            'category_id' => 'nullable|exists:categories,id',
+            'image' => 'nullable|string'
+        ]);
+
+        $validated['organizer_id'] = $organizerId;
+        $validated['status'] = 'draft';
+
+        $event = Event::create($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Tạo sự kiện thành công.',
+            'data' => $event
+        ], 201);
+    }
+
+    public function update(Request $request, $id)
+    {
+        $organizerId = $request->user()->id;
+        $event = Event::where('id', $id)->where('organizer_id', $organizerId)->firstOrFail();
+
+        $validated = $request->validate([
+            'title' => 'sometimes|required|string|max:255',
+            'description' => 'nullable|string',
+            'start_time' => 'sometimes|required|date',
+            'end_time' => 'sometimes|required|date|after:start_time',
+            'location' => 'sometimes|required|string|max:255',
+            'capacity' => 'sometimes|required|integer|min:1',
+            'category_id' => 'nullable|exists:categories,id',
+            'image' => 'nullable|string',
+            'status' => 'nullable|in:draft,published,cancelled'
+        ]);
+
+        if (isset($validated['status']) && $validated['status'] === 'published') {
+            // Allow publishing even if previously published (no-op)
+            $event->status = 'published';
+            $event->save();
+        } else {
+            if ($event->status === 'published') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Không thể chỉnh sửa sự kiện đã đăng (published).'
+                ], 403);
+            }
+            $event->update($validated);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Cập nhật sự kiện thành công.',
+            'data' => $event
+        ]);
+    }
+
+    public function cancel(Request $request, $id)
+    {
+        $organizerId = $request->user()->id;
+        $event = Event::where('id', $id)->where('organizer_id', $organizerId)->firstOrFail();
+
+        $validated = $request->validate([
+            'cancel_reason' => 'required|string'
+        ]);
+
+        $event->status = 'cancelled';
+        $event->cancel_reason = $validated['cancel_reason'];
+        $event->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Đã hủy sự kiện thành công.',
+            'data' => $event
+        ]);
     }
 }
