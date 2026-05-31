@@ -205,11 +205,15 @@ class OrganizerEventController extends Controller
             'location' => 'required|string|max:255',
             'capacity' => 'required|integer|min:1',
             'category_id' => 'nullable|exists:categories,id',
-            'image' => 'nullable|string'
+            'image' => 'nullable|string',
+            'status' => 'nullable|in:draft,published',
+            'registration_deadline' => 'nullable|date'
         ]);
 
         $validated['organizer_id'] = $organizerId;
-        $validated['status'] = 'draft';
+        if (!isset($validated['status'])) {
+            $validated['status'] = 'draft';
+        }
 
         $event = Event::create($validated);
 
@@ -234,7 +238,8 @@ class OrganizerEventController extends Controller
             'capacity' => 'sometimes|required|integer|min:1',
             'category_id' => 'nullable|exists:categories,id',
             'image' => 'nullable|string',
-            'status' => 'nullable|in:draft,published,cancelled'
+            'status' => 'nullable|in:draft,published,cancelled',
+            'registration_deadline' => 'nullable|date'
         ]);
 
         if (isset($validated['status']) && $validated['status'] === 'published') {
