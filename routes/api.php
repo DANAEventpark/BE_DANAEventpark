@@ -12,10 +12,20 @@ Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/google', [AuthController::class, 'googleLogin']);
+    
+    // Email verification routes
+    Route::get('/email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail']);
+    Route::post('/email/verification-notification', [AuthController::class, 'resendVerificationEmail']);
 
     Route::middleware('auth:api')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/me', [AuthController::class, 'me']);
+        
+        // Profile routes
+        Route::prefix('profile')->group(function () {
+            Route::put('/info', [\App\Http\Controllers\ProfileController::class, 'updateInfo']);
+            Route::put('/password', [\App\Http\Controllers\ProfileController::class, 'updatePassword']);
+        });
     });
 });
 
@@ -39,6 +49,7 @@ use App\Http\Controllers\AttendeeController;
 // Protected routes
 Route::middleware('auth:api')->group(function () {
     Route::post('/events/{id}/register', [RegistrationController::class, 'store']);
+    Route::post('/events/{id}/cancel', [RegistrationController::class, 'cancel']);
     Route::post('/events/{id}/reviews', [ReviewController::class, 'store']);
 
     // Organizer Dashboard routes
@@ -46,7 +57,10 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/dashboard/stats', [OrganizerEventController::class, 'getDashboardStats']);
         Route::get('/dashboard/events', [OrganizerEventController::class, 'getRecentEvents']);
         Route::get('/events', [OrganizerEventController::class, 'index']);
+        Route::post('/events', [OrganizerEventController::class, 'store']);
         Route::get('/events/{id}', [OrganizerEventController::class, 'show']);
+        Route::put('/events/{id}', [OrganizerEventController::class, 'update']);
+        Route::put('/events/{id}/cancel', [OrganizerEventController::class, 'cancel']);
         Route::put('/events/{id}/status', [OrganizerEventController::class, 'updateStatus']);
     });
 

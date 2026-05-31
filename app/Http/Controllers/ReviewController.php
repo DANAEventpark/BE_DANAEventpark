@@ -33,6 +33,13 @@ class ReviewController extends Controller
             ], 403);
         }
 
+        if ($event->end_time && now()->lessThan($event->end_time)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn chỉ có thể đánh giá sau khi sự kiện đã kết thúc!'
+            ], 403);
+        }
+
         $review = Review::create([
             'event_id' => $eventId,
             'user_id' => $user->id,
