@@ -86,9 +86,22 @@ class RegistrationController extends Controller
         }
 
         // Cập nhật trạng thái thành cancelled
+        $wasApproved = $registration->status === 'approved';
         $registration->update([
             'status' => 'cancelled'
         ]);
+
+        // Tự động đẩy người tiếp theo trong danh sách chờ lên nếu có chỗ trống
+        if ($wasApproved) {
+            $nextPending = Registration::where('event_id', $eventId)
+                                       ->where('status', 'pending')
+                                       ->orderBy('created_at', 'asc')
+                                       ->first();
+
+            if ($nextPending) {
+                $nextPending->update(['status' => 'approved']);
+            }
+        }
 
         return response()->json([
             'success' => true,
