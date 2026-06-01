@@ -36,7 +36,7 @@ class AuthController extends Controller
 
         return response()->json([
             'status'  => 'success',
-            'message' => 'Đăng ký thành công',
+            'message' => __('messages.register_success'),
             'data'    => [
                 'user'       => $result['user'],
                 'token'      => $result['token'],
@@ -57,7 +57,7 @@ class AuthController extends Controller
 
             return response()->json([
                 'status'  => 'success',
-                'message' => 'Đăng nhập thành công',
+                'message' => __('messages.login_success'),
                 'data'    => [
                     'user'       => $result['user'],
                     'token'      => $result['token'],
@@ -65,13 +65,13 @@ class AuthController extends Controller
                 ],
             ], 200);
         } catch (ValidationException $e) {
-            $msg = $e->errors()['email'][0] ?? 'Email hoặc mật khẩu không đúng';
+            $msg = $e->errors()['email'][0] ?? __('messages.login_failed');
             
             if ($msg === 'email_unverified') {
                 return response()->json([
                     'status' => 'error',
                     'error_code' => 'EMAIL_UNVERIFIED',
-                    'message' => 'Vui lòng kiểm tra hộp thư và xác thực email trước khi đăng nhập.',
+                    'message' => __('messages.email_unverified') ?? 'Vui lòng kiểm tra hộp thư và xác thực email trước khi đăng nhập.',
                 ], 403);
             }
 
@@ -95,7 +95,7 @@ class AuthController extends Controller
 
         return response()->json([
             'status'  => 'success',
-            'message' => 'Đăng nhập thành công',
+            'message' => __('messages.login_success'),
             'data'    => [
                 'user'       => $result['user'],
                 'token'      => $result['token'],
@@ -110,7 +110,7 @@ class AuthController extends Controller
 
         return response()->json([
             'status'  => 'success',
-            'message' => 'Đăng xuất thành công',
+            'message' => __('messages.logout_success'),
         ], 200);
     }
 

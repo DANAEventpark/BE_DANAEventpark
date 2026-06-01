@@ -6,6 +6,8 @@ use App\Http\Controllers\EventController;
 use App\Http\Controllers\RegistrationController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\OrganizerEventController;
+use App\Http\Controllers\AttendeeController;
 
 // Auth routes (REQ_01 + REQ_02)
 Route::prefix('auth')->group(function () {
@@ -42,9 +44,6 @@ Route::get('/events/{id}/reviews/stream', [ReviewController::class, 'stream']);
 // Categories (REQ_13)
 Route::get('/categories', [CategoryController::class, 'index']);
 Route::get('/categories/{id}/events', [CategoryController::class, 'getEvents']);
-
-use App\Http\Controllers\OrganizerEventController;
-use App\Http\Controllers\AttendeeController;
 
 // Protected routes
 Route::middleware('auth:api')->group(function () {

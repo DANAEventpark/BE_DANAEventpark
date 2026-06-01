@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"path": "../../FE_Attendee"
+		},
+		{
+			"path": "../../FE_Organizer"
+		}
+	],
+	"settings": {}
+}
