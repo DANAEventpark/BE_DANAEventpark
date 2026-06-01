@@ -8,16 +8,17 @@ use App\Models\Event;
 
 class CategoryController extends Controller
 {
-   public function index()
-{
+    public function index()
+    {
+        $categories = Category::withCount(['events' => function ($query) {
+            $query->where('status', 'published');
+        }])->get();
 
-    $categories = Category::withCount('events')->get();
-
-    return response()->json([
-        'success' => true,
-        'data' => $categories
-    ]);
-}
+        return response()->json([
+            'success' => true,
+            'data' => $categories
+        ]);
+    }
 
     public function getEvents($id)
 {
