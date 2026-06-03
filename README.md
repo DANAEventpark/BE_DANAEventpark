@@ -1,55 +1,62 @@
-# DANAEventpark - Backend API
+# DANAEventpark - Backend API (Laravel)
 
-This repository contains the Backend API for the **DANAEventpark** ecosystem. It is built using the robust **Laravel** PHP framework to serve data to both the Attendee and Organizer frontend applications.
+Welcome to the Backend Repository of **DANAEventpark**! This is the core of the entire system, handling all business logic, database interactions, and providing RESTful APIs for both the Attendee and Organizer frontend applications.
 
-## 🚀 Tech Stack
-- **Framework:** Laravel (PHP >= 8.3)
-- **Authentication:** Laravel Sanctum
-- **Database:** MySQL / PostgreSQL / SQLite
-- **Asset Bundler:** Vite
+## 🌟 Overview
+The backend is built on the **Laravel (PHP)** framework. It manages key workflows including User Authentication, Event Management, Categories, Registrations (ticketing), and Reviews.
 
-## 📁 Directory Structure
-- `app/Http/Controllers`: Contains the API controllers.
-- `routes/api.php`: Defines all API endpoints.
-- `database/migrations`: Database schema definitions.
-- `tests/`: Contains automated tests (Unit & Feature).
+---
 
-## 🛠️ Local Development Setup
+## 🏗 Core Folder Structure
+For newcomers, here are the most important directories you need to know:
+- `routes/api.php`: Where all API endpoints are defined. Every request from the Frontend comes through here first.
+- `app/Http/Controllers/`: Contains the business logic for handling incoming requests.
+  - *Examples:* `AuthController` (Login/Register), `EventController` (Fetching events), `OrganizerEventController` (Event management for organizers), etc.
+- `app/Models/`: Contains the classes that interact directly with the database tables (Eloquent ORM).
+- `database/migrations/`: Files defining the database schema. When running migrations, Laravel uses these to create tables.
 
-1. **Install PHP Dependencies**
+---
+
+## 🔐 Authentication Flow
+The project uses **Laravel Sanctum** for issuing tokens.
+1. A user sends a Login Request.
+2. The Backend validates credentials and returns a `Bearer Token`.
+3. The Frontend stores this token and attaches it to the `Authorization: Bearer <token>` header of all subsequent requests to identify the user.
+
+---
+
+## 🛠 Setup & Installation Guide
+
+1. **Install Dependencies:**
    ```bash
    composer install
-   ```
-
-2. **Install Node.js Dependencies**
-   ```bash
    npm install
    ```
 
-3. **Environment Configuration**
-   Copy the example environment file and generate the application key:
+2. **Environment Configuration:**
    ```bash
    cp .env.example .env
    php artisan key:generate
    ```
-   *Make sure to update your database credentials (`DB_CONNECTION`, `DB_HOST`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`) in the `.env` file.*
+   *Note: Open the `.env` file, find the `DB_` variables, and fill in your MySQL/PostgreSQL database credentials (Database Name, User, Password).*
 
-4. **Run Migrations**
-   Create the necessary database tables:
+3. **Run Migrations & Seeders (Create tables & mock data):**
    ```bash
    php artisan migrate
+   # If the project has Seeders, you can optionally run: php artisan db:seed
    ```
 
-5. **Start the Development Server**
-   To start the API server and Vite asset bundler simultaneously, run:
+4. **Start the Server:**
    ```bash
-   composer run dev
+   composer run dev 
+   # This command simultaneously runs 'php artisan serve' and 'npm run dev'
    ```
-   *(Alternatively, run `php artisan serve` and `npm run dev` in separate terminals).*
-   The API will typically be available at `http://127.0.0.1:8000`.
+   The server will default to `http://127.0.0.1:8000`.
 
-## 🧪 Testing
-Run the test suite using:
-```bash
-php artisan test
-```
+---
+
+## 🚀 Useful Terminal Commands (Cheat Sheet)
+- `php artisan route:list`: View all available API endpoints.
+- `php artisan make:controller NameController`: Generate a new Controller.
+- `php artisan make:model Name -m`: Generate a Model along with its Migration file.
+- `php artisan tinker`: Open the console to test database queries directly.
