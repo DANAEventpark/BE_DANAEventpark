@@ -2,8 +2,21 @@
 
 Welcome to the Backend Repository of **DANAEventpark**! This is the core of the entire system, handling all business logic, database interactions, and providing RESTful APIs for both the Attendee and Organizer frontend applications.
 
-## 🌟 Overview
-The backend is built on the **Laravel (PHP)** framework. It manages key workflows including User Authentication, Event Management, Categories, Registrations (ticketing), and Reviews.
+## 🌟 Overview & Key Features
+The backend is built on the **Laravel (PHP)** framework. It manages key workflows including:
+- User Authentication (Login, Register, Social Login)
+- Event Management (CRUD for organizers)
+- Categories Management
+- Registrations & Ticketing (Waitlist & FIFO promotion mechanism)
+- Reviews & Ratings system
+
+---
+
+## 💻 Technology Stack
+- **Framework:** Laravel (PHP)
+- **Database:** PostgreSQL / MySQL
+- **Authentication:** Laravel Sanctum (JWT/Token-based)
+- **API Documentation:** Postman Collection
 
 ---
 
@@ -60,3 +73,35 @@ The project uses **Laravel Sanctum** for issuing tokens.
 - `php artisan make:controller NameController`: Generate a new Controller.
 - `php artisan make:model Name -m`: Generate a Model along with its Migration file.
 - `php artisan tinker`: Open the console to test database queries directly.
+
+---
+
+## 📖 API Endpoints Documentation
+
+The complete and interactive API documentation is provided as a Postman Collection.
+You can find it in this repository at: `postman/DANAEventpark.postman_collection.json`.
+
+### Quick Reference of Key Endpoints (Base URL: `/api`)
+
+**1. Authentication**
+- `POST /auth/register` - Register a new account
+- `POST /auth/login` - Login and receive Bearer Token
+- `POST /auth/logout` - Logout (Requires Token)
+- `GET /auth/me` - Get current user profile (Requires Token)
+
+**2. Public Events**
+- `GET /events` - List all published events (Search & Filter)
+- `GET /events/{id}` - View event details
+- `GET /categories` - List all event categories
+
+**3. Attendee Actions (Requires Token)**
+- `POST /events/{id}/register` - Register for an event (Waitlist automatically handled)
+- `POST /events/{id}/cancel` - Cancel a registration
+- `POST /events/{id}/reviews` - Submit a review
+- `GET /attendee/dashboard/registrations` - View all registered events
+
+**4. Organizer Actions (Requires Token + Organizer Role)**
+- `GET /organizer/dashboard/stats` - View organizer statistics
+- `POST /organizer/events` - Create a new event
+- `PUT /organizer/events/{id}` - Update event details
+- `PUT /organizer/events/{id}/status` - Publish or cancel an event
