@@ -80,11 +80,14 @@ class AuthService
         $user = User::where('email', $data['email'])->first();
 
         if (!$user) {
+            $roleName = $data['role'] ?? 'attendee';
+            $roleId = $roleName === 'organizer' ? 2 : 1;
+
             $user = User::create([
                 'name'      => $data['name'],
                 'email'     => $data['email'],
                 'google_id' => $data['google_id'],
-                'role_id'   => 1, // Attendee role
+                'role_id'   => $roleId, // Use requested role
                 'password'  => null,
             ]);
             $user->markEmailAsVerified();

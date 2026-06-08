@@ -22,7 +22,7 @@ class AuthController extends Controller
     {
         $data = $request->validate([
             'name'     => 'required|string|max:255',
-            'email'    => ['required', 'string', 'email:rfc' . (app()->environment('testing') ? '' : ',dns'), 'max:255', 'unique:users'],
+            'email'    => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
             'phone'    => 'nullable|string|max:15',
             'role'     => 'in:attendee,organizer',
@@ -89,6 +89,7 @@ class AuthController extends Controller
             'name'      => 'required|string',
             'google_id' => 'required|string',
             'avatar'    => 'nullable|string',
+            'role'      => 'nullable|in:attendee,organizer',
         ]);
 
         $result = $this->authService->googleLogin($data);
