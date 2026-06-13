@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use Illuminate\Auth\Events\Registered;
 
 class AuthService
 {
@@ -29,6 +30,8 @@ class AuthService
         ]);
 
         $user->load('role');
+
+        event(new Registered($user));
 
         $token = JWTAuth::fromUser($user);
 

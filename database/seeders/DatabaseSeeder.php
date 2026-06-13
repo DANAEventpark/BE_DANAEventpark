@@ -37,36 +37,51 @@ class DatabaseSeeder extends Seeder
         $organizerId = Str::uuid()->toString();
         $attendeeId  = Str::uuid()->toString();
         $attendeeId1  = Str::uuid()->toString();
+        $attendeeId2  = Str::uuid()->toString();
         DB::table('users')->insert([
             [
-                'id'         => $organizerId,
-                'name'       => 'Organizer DANAEventSpark',
-                'email'      => 'organizer@test.com',
-                'password'   => Hash::make('password123'),
-                'role_id'    => 2,
-                'phone'      => '0901234567',
-                'created_at' => now(),
-                'updated_at' => now(),
+                'id'                => $organizerId,
+                'name'              => 'Organizer DANAEventSpark',
+                'email'             => 'organizer@test.com',
+                'email_verified_at' => now(),
+                'password'          => Hash::make('password123'),
+                'role_id'           => 2,
+                'phone'             => '0901234567',
+                'created_at'        => now(),
+                'updated_at'        => now(),
             ],
             [
-                'id'         => $attendeeId,
-                'name'       => 'Attendee Test User',
-                'email'      => 'attendee@test.com',
-                'password'   => Hash::make('password123'),
-                'role_id'    => 1,
-                'phone'      => null,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'id'                => $attendeeId,
+                'name'              => 'Attendee Test User',
+                'email'             => 'attendee@test.com',
+                'email_verified_at' => now(),
+                'password'          => Hash::make('password123'),
+                'role_id'           => 1,
+                'phone'             => null,
+                'created_at'        => now(),
+                'updated_at'        => now(),
             ],
              [
-                'id'         => $attendeeId1,
-                'name'       => 'Thuy Trang',
-                'email'      => 'thuytrangpnv27@gmail.com',
-                'password'   => Hash::make('12345678'),
-                'role_id'    => 1,
-                'phone'      => null,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'id'                => $attendeeId1,
+                'name'              => 'Thuy Trang',
+                'email'             => 'thuytrangpnv27@gmail.com',
+                'email_verified_at' => now(),
+                'password'          => Hash::make('12345678'),
+                'role_id'           => 1,
+                'phone'             => null,
+                'created_at'        => now(),
+                'updated_at'        => now(),
+            ],
+            [
+                'id'                => $attendeeId2,
+                'name'              => 'nguyenx mạnh',
+                'email'             => 'nguyenmanh@test.com',
+                'email_verified_at' => now(),
+                'password'          => Hash::make('password123'),
+                'role_id'           => 1,
+                'phone'             => '0987654321',
+                'created_at'        => now(),
+                'updated_at'        => now(),
             ],
         ]);
 
@@ -199,34 +214,37 @@ class DatabaseSeeder extends Seeder
         // ── 4. ADDITIONAL ORGANIZERS & EVENTS ─────────────────
         DB::table('users')->insertOrIgnore([
             [
-                'id'         => '4',
-                'name'       => 'PNV EVENT CLUB',
-                'email'      => 'pnv@test.com',
-                'password'   => Hash::make('password123'),
-                'role_id'    => 2,
-                'phone'      => '0901234564',
-                'created_at' => now(),
-                'updated_at' => now(),
+                'id'                => '4',
+                'name'              => 'PNV EVENT CLUB',
+                'email'             => 'pnv@test.com',
+                'email_verified_at' => now(),
+                'password'          => Hash::make('password123'),
+                'role_id'           => 2,
+                'phone'             => '0901234564',
+                'created_at'        => now(),
+                'updated_at'        => now(),
             ],
             [
-                'id'         => '5',
-                'name'       => 'DA NANG YOUTH',
-                'email'      => 'youth@test.com',
-                'password'   => Hash::make('password123'),
-                'role_id'    => 2,
-                'phone'      => '0901234565',
-                'created_at' => now(),
-                'updated_at' => now(),
+                'id'                => '5',
+                'name'              => 'DA NANG YOUTH',
+                'email'             => 'youth@test.com',
+                'email_verified_at' => now(),
+                'password'          => Hash::make('password123'),
+                'role_id'           => 2,
+                'phone'             => '0901234565',
+                'created_at'        => now(),
+                'updated_at'        => now(),
             ],
             [
-                'id'         => '6',
-                'name'       => 'FPT EVENT TEAM',
-                'email'      => 'fpt@test.com',
-                'password'   => Hash::make('password123'),
-                'role_id'    => 2,
-                'phone'      => '0901234566',
-                'created_at' => now(),
-                'updated_at' => now(),
+                'id'                => '6',
+                'name'              => 'FPT EVENT TEAM',
+                'email'             => 'fpt@test.com',
+                'email_verified_at' => now(),
+                'password'          => Hash::make('password123'),
+                'role_id'           => 2,
+                'phone'             => '0901234566',
+                'created_at'        => now(),
+                'updated_at'        => now(),
             ],
         ]);
 
@@ -530,6 +548,40 @@ class DatabaseSeeder extends Seeder
 
         DB::table('events')->insert($additionalEvents);
 
-        $this->command->info('✅ Seeded: 6 categories, 5 users, 26 events');
+        // ── 5. TEST EVENT FOR REVIEWS ─────────────────────────
+        $pastEventId = DB::table('events')->insertGetId([
+            'title'                 => 'Sự kiện Đã Kết Thúc - Test Bình Luận',
+            'description'           => 'Sự kiện này dùng để test chức năng bình luận sau khi kết thúc.',
+            'start_time'            => '2026-06-03 08:00:00',
+            'end_time'              => '2026-06-03 12:00:00',
+            'location'              => 'Đà Nẵng',
+            'organizer_id'          => $organizerId,
+            'status'                => 'done',
+            'capacity'              => 100,
+            'category_id'           => 1,
+            'image'                 => null,
+            'registration_deadline' => '2026-06-01 23:59:00',
+            'created_at'            => now(),
+            'updated_at'            => now(),
+        ]);
+
+        DB::table('registrations')->insert([
+            [
+                'event_id' => $pastEventId,
+                'user_id' => $attendeeId1, // Thuy Trang
+                'status' => 'approved',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'event_id' => $pastEventId,
+                'user_id' => $attendeeId2, // nguyenx manh
+                'status' => 'approved',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]
+        ]);
+
+        $this->command->info('✅ Seeded: 6 categories, 6 users, 27 events, 2 registrations');
     }
 }

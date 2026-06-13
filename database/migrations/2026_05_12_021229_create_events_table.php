@@ -19,7 +19,7 @@ return new class extends Migration
             $table->dateTime('end_time');
             $table->string('location');
             $table->foreignUuid('organizer_id')->constrained('users')->onDelete('cascade');
-            $table->enum('status', ['draft', 'published', 'cancelled'])->default('draft');
+            $table->enum('status', ['draft', 'published', 'cancelled', 'done'])->default('draft');
             $table->timestamps();
         });
     }
