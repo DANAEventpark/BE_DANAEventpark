@@ -77,7 +77,8 @@ class EventController extends Controller
             'organizer:id,name,email,avatar',
             'registrations' => function($query) {
                 $query->where('status', 'approved')
-                      ->with('user:id,name,avatar');
+                      ->with('user:id,name,avatar')
+                      ->select('id', 'event_id', 'user_id', 'status', 'seats', 'created_at');
             },
             'reviews' => function($query) {
                 $query->with('user:id,name,avatar')->latest('id');

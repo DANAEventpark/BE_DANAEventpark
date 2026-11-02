@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Event;
+use App\Models\Registration;
+use App\Mail\EventCancelledMail;
+use Illuminate\Support\Facades\Mail;
 
 class OrganizerEventController extends Controller
 {
@@ -17,12 +20,12 @@ class OrganizerEventController extends Controller
         // 1. Tổng sự kiện do organizer này tổ chức
         $totalEvents = Event::where('organizer_id', $organizerId)->count();
 
-        // 2. Tối ưu: Dùng Join hoặc whereHas đếm trực tiếp trên CSDL thay vì tải toàn bộ sự kiện vào RAM
+        // 2. Tổng số chỗ đã đăng ký (approved) — tính theo seats, không phải số hàng
         $totalRegistrations = \App\Models\Registration::whereHas('event', function($query) use ($organizerId) {
              $query->where('organizer_id', $organizerId);
-        })->count();
+        })->where('status', 'approved')->sum('seats');
 
-        // 3. Tối ưu: Tính trung bình trực tiếp bằng SQL Aggregate Function thay vì vòng lặp foreach trong PHP
+        // 3. Tính trung bình rating
         $avgRatingRaw = \App\Models\Review::whereHas('event', function($query) use ($organizerId) {
              $query->where('organizer_id', $organizerId);
         })->avg('rating');
@@ -32,9 +35,9 @@ class OrganizerEventController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
-                'total_events' => $totalEvents,
-                'total_registrations' => $totalRegistrations,
-                'average_rating' => $averageRating
+                'total_events'         => $totalEvents,
+                'total_registrations'  => $totalRegistrations,
+                'average_rating'       => $averageRating
             ]
         ]);
     }
@@ -47,24 +50,26 @@ class OrganizerEventController extends Controller
         $organizerId = $request->user()->id;
 
         $events = Event::where('organizer_id', $organizerId)
-            ->withCount('registrations')
+            ->withSum(['registrations as approved_seats_sum' => function ($q) {
+                $q->where('status', 'approved');
+            }], 'seats')
             ->orderBy('created_at', 'desc')
             ->take(5)
             ->get()
             ->map(function ($event) {
                 return [
-                    'id' => $event->id,
-                    'title' => $event->title,
-                    'start_time' => $event->start_time ? $event->start_time->format('Y-m-d H:i:s') : null,
-                    'registrations_count' => $event->registrations_count,
-                    'capacity' => $event->capacity,
-                    'status' => $event->status,
+                    'id'                  => $event->id,
+                    'title'               => $event->title,
+                    'start_time'          => $event->start_time ? $event->start_time->format('Y-m-d H:i:s') : null,
+                    'registrations_count' => (int) ($event->approved_seats_sum ?? 0),
+                    'capacity'            => $event->capacity,
+                    'status'              => $event->status,
                 ];
             });
 
         return response()->json([
             'success' => true,
-            'data' => $events
+            'data'    => $events
         ]);
     }
 
@@ -76,23 +81,25 @@ class OrganizerEventController extends Controller
         $organizerId = $request->user()->id;
 
         $events = Event::where('organizer_id', $organizerId)
-            ->withCount('registrations')
+            ->withSum(['registrations as approved_seats_sum' => function ($q) {
+                $q->where('status', 'approved');
+            }], 'seats')
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($event) {
                 return [
-                    'id' => $event->id,
-                    'title' => $event->title,
-                    'start_time' => $event->start_time ? $event->start_time->format('Y-m-d H:i:s') : null,
-                    'registrations_count' => $event->registrations_count,
-                    'capacity' => $event->capacity,
-                    'status' => $event->status,
+                    'id'                  => $event->id,
+                    'title'               => $event->title,
+                    'start_time'          => $event->start_time ? $event->start_time->format('Y-m-d H:i:s') : null,
+                    'registrations_count' => (int) ($event->approved_seats_sum ?? 0),
+                    'capacity'            => $event->capacity,
+                    'status'              => $event->status,
                 ];
             });
 
         return response()->json([
             'success' => true,
-            'data' => $events
+            'data'    => $events
         ]);
     }
 
@@ -106,62 +113,68 @@ class OrganizerEventController extends Controller
             ->where('status', 'approved')
             ->map(function ($registration) {
                 return [
-                    'name' => $registration->user->name,
-                    'email' => $registration->user->email,
-                    'registered_at' => $registration->created_at->format('d/m/Y H:i'),
-                ];
-            })->values(); // Sử dụng values() để reset lại index của mảng sau khi filter
-
-        // 2. Lọc và định dạng danh sách người đang nằm ở hàng đợi (waitlist)
-        $waitlistList = $event->registrations
-            ->where('status', 'pending')
-            ->sortBy('created_at') // Sắp xếp theo thứ tự đăng ký sớm nhất lên đầu để đôn ghế chuẩn FIFO
-            ->map(function ($registration) {
-                return [
-                    'name' => $registration->user->name,
-                    'email' => $registration->user->email,
+                    'name'          => $registration->user->name,
+                    'email'         => $registration->user->email,
+                    'seats'         => $registration->seats ?? 1,
                     'registered_at' => $registration->created_at->format('d/m/Y H:i'),
                 ];
             })->values();
 
+        // 2. Lọc và định dạng danh sách người đang nằm ở hàng đợi (waitlist)
+        $waitlistList = $event->registrations
+            ->where('status', 'pending')
+            ->sortBy('created_at')
+            ->map(function ($registration) {
+                return [
+                    'name'          => $registration->user->name,
+                    'email'         => $registration->user->email,
+                    'seats'         => $registration->seats ?? 1,
+                    'registered_at' => $registration->created_at->format('d/m/Y H:i'),
+                ];
+            })->values();
+
+        // Tổng số ghế confirmed/waitlist (tính theo seats, không phải số hàng)
+        $confirmedSeats = $confirmedList->sum('seats');
+        $waitlistSeats  = $waitlistList->sum('seats');
+
         return response()->json([
             'success' => true,
             'data' => [
-                'id' => $event->id,
-                'title' => $event->title,
+                'id'          => $event->id,
+                'title'       => $event->title,
                 'description' => $event->description,
-                'location' => $event->location,
-                'start_time' => $event->start_time ? $event->start_time->format('Y-m-d H:i:s') : null,
-                'end_time' => $event->end_time ? $event->end_time->format('Y-m-d H:i:s') : null,
-                'capacity' => $event->capacity,
-                'status' => $event->status,
-                'created_at' => $event->created_at->format('d/m/Y'),
+                'location'    => $event->location,
+                'start_time'  => $event->start_time ? $event->start_time->format('Y-m-d H:i:s') : null,
+                'end_time'    => $event->end_time   ? $event->end_time->format('Y-m-d H:i:s')   : null,
+                'capacity'    => $event->capacity,
+                'status'      => $event->status,
+                'created_at'  => $event->created_at->format('d/m/Y'),
                 'category_name' => $event->category ? $event->category->name : 'N/A',
-                'category_id' => $event->category_id,
-                'image' => $event->image,
+                'category_id'   => $event->category_id,
+                'image'         => $event->image,
 
-                // Số lượng tổng quan để hiển thị ở khối Widget bên phải
-                'confirmed_count' => $confirmedList->count(),
-                'waitlist_count' => $waitlistList->count(),
+                // Số ghế (seats) thay vì số hàng
+                'confirmed_count' => $confirmedSeats,
+                'waitlist_count'  => $waitlistSeats,
 
                 'confirmed_users' => $confirmedList,
-                'waitlist_users' => $waitlistList,
+                'waitlist_users'  => $waitlistList,
 
                 // Thêm dữ liệu Đánh giá
                 'reviews' => $event->reviews->map(function ($review) {
                     return [
-                        'id' => $review->id,
-                        'rating' => $review->rating,
-                        'comment' => $review->comment,
+                        'id'         => $review->id,
+                        'rating'     => $review->rating,
+                        'comment'    => $review->comment,
                         'created_at' => $review->created_at->format('d/m/Y H:i'),
                         'user' => [
-                            'name' => $review->user->name ?? 'Người dùng',
+                            'name'   => $review->user->name ?? 'Người dùng',
                             'avatar' => $review->user->avatar ?? null
                         ]
                     ];
                 })->sortByDesc('created_at')->values(),
                 'average_rating' => $event->reviews->count() > 0 ? round($event->reviews->avg('rating'), 1) : null,
-                'total_reviews' => $event->reviews->count()
+                'total_reviews'  => $event->reviews->count()
             ]
         ], 200);
     }
@@ -272,14 +285,30 @@ class OrganizerEventController extends Controller
             'cancel_reason' => 'required|string'
         ]);
 
-        $event->status = 'cancelled';
+        $event->status        = 'cancelled';
         $event->cancel_reason = $validated['cancel_reason'];
         $event->save();
 
+        // Load category relationship for the email template
+        $event->load('category');
+
+        // Gửi email thông báo hủy cho tất cả người đã đăng ký (approved + pending)
+        $registrations = Registration::where('event_id', $event->id)
+            ->whereIn('status', ['approved', 'pending'])
+            ->with('user:id,name,email')
+            ->get();
+
+        foreach ($registrations as $registration) {
+            if ($registration->user && $registration->user->email) {
+                Mail::to($registration->user->email)
+                    ->queue(new EventCancelledMail($event, $registration->user));
+            }
+        }
+
         return response()->json([
             'success' => true,
-            'message' => 'Đã hủy sự kiện thành công.',
-            'data' => $event
+            'message' => 'Đã hủy sự kiện thành công. Email thông báo đã được gửi đến người đăng ký.',
+            'data'    => $event
         ]);
     }
 }
