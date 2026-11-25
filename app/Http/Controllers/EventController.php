@@ -45,10 +45,10 @@ class EventController extends Controller
             'this_week' => $query->whereBetween('start_time', [$now, $now->copy()->endOfWeek()]),
             'this_month' => $query->whereBetween('start_time', [$now, $now->copy()->endOfMonth()]),
             'next_month' => $query->whereBetween('start_time', [
-                $now->copy()->addMonth()->startOfMonth(), 
+                $now->copy()->addMonth()->startOfMonth(),
                 $now->copy()->addMonth()->endOfMonth()
             ]),
-            'past' => $query->where(function($q) use ($now) {
+            'past' => $query->where(function ($q) use ($now) {
                 $q->where('end_time', '<', $now)->orWhere('status', 'done');
             }),
             default => $query->where('start_time', '>=', $now)->where('status', 'published'), // 'upcoming'
@@ -61,6 +61,11 @@ class EventController extends Controller
                 },
                 'reviews'
             ])
+            ->withSum([
+                'registrations as confirmed_seats_count' => function ($q) {
+                    $q->where('status', 'approved');
+                }
+            ], 'quantity')
             ->withAvg('reviews', 'rating')
             ->paginate(6);
 
@@ -75,14 +80,21 @@ class EventController extends Controller
         $event = Event::with([
             'category',
             'organizer:id,name,email,avatar',
-            'registrations' => function($query) {
+            'registrations' => function ($query) {
                 $query->where('status', 'approved')
                       ->with('user:id,name,avatar');
             },
-            'reviews' => function($query) {
+            'reviews' => function ($query) {
                 $query->with('user:id,name,avatar')->latest('id');
             }
-        ])->findOrFail($id);
+        ])->find($id);
+
+        if (!$event) {
+            return response()->json([
+                'success' => false,
+                'message' => __('messages.event_not_found'),
+            ], 404);
+        }
 
         // Check registration for current authenticated user
         $userRegistration = null;
@@ -106,13 +118,18 @@ class EventController extends Controller
 
     /**
      * GET /api/system-stats
-     * Get system statistics (events, registrations, organizers)
+     * Get system statistics (events open for registration matching upcoming list, registrations, organizers)
      */
     public function getSystemStats()
     {
         try {
-            $totalEvents = DB::table('events')->where('status', 'published')->count();
-            $totalRegistrations = DB::table('registrations')->where('status', 'approved')->count();
+            $totalEvents = DB::table('events')
+                ->where('status', 'published')
+                ->where('start_time', '>=', now())
+                ->count();
+            $totalRegistrations = DB::table('registrations')
+                ->where('status', 'approved')
+                ->sum('quantity');
             $totalOrganizers = DB::table('users')->where('role_id', 2)->count();
 
             return response()->json([
@@ -124,10 +141,11 @@ class EventController extends Controller
                 ]
             ]);
         } catch (\Exception $e) {
+            \Log::error('Failed to fetch system stats', ['message' => $e->getMessage()]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Không thể lấy số liệu thống kê',
-                'error' => $e->getMessage()
+                'message' => 'Không thể lấy số liệu thống kê'
             ], 500);
         }
     }

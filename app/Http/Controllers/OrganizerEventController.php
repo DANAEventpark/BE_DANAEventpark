@@ -7,6 +7,45 @@ use App\Models\Event;
 
 class OrganizerEventController extends Controller
 {
+    private const MAX_EVENT_CAPACITY = 100000;
+
+    /**
+     * Format event data consistently for dashboard and event list responses.
+     */
+    private function formatEventSummary(Event $event): array
+    {
+        return [
+            'id' => $event->id,
+            'title' => $event->title,
+            'description' => $event->description,
+            'location' => $event->location,
+            'category_id' => $event->category_id,
+            'image' => $event->image,
+            'start_time' => $event->start_time ? $event->start_time->format('Y-m-d H:i:s') : null,
+            'end_time' => $event->end_time ? $event->end_time->format('Y-m-d H:i:s') : null,
+            'registration_deadline' => $event->registration_deadline ? $event->registration_deadline->format('Y-m-d H:i:s') : null,
+            'registrations_count' => $event->registrations_count,
+            'capacity' => $event->capacity,
+            'status' => $event->status,
+            'cancel_reason' => $event->cancel_reason,
+        ];
+    }
+
+    /**
+     * Custom Vietnamese validation messages for event creation and updates.
+     */
+    private function eventValidationMessages(): array
+    {
+        return [
+            'start_time.after' => 'Thời gian bắt đầu phải ở trong tương lai (sau thời điểm hiện tại).',
+            'end_time.after' => 'Thời gian kết thúc phải sau thời gian bắt đầu.',
+            'registration_deadline.before_or_equal' => 'Hạn đăng ký phải trước hoặc bằng thời gian bắt đầu sự kiện.',
+            'capacity.integer' => 'Sức chứa phải là số nguyên hợp lệ.',
+            'capacity.min' => 'Sức chứa phải tối thiểu là 1 người.',
+            'capacity.max' => 'Sức chứa không được vượt quá 100.000 người.',
+        ];
+    }
+
     /**
      * Lấy các chỉ số thống kê tổng quan cho Dashboard
      */
@@ -14,17 +53,14 @@ class OrganizerEventController extends Controller
     {
         $organizerId = $request->user()->id;
 
-        // 1. Tổng sự kiện do organizer này tổ chức
         $totalEvents = Event::where('organizer_id', $organizerId)->count();
 
-        // 2. Tối ưu: Dùng Join hoặc whereHas đếm trực tiếp trên CSDL thay vì tải toàn bộ sự kiện vào RAM
-        $totalRegistrations = \App\Models\Registration::whereHas('event', function($query) use ($organizerId) {
-             $query->where('organizer_id', $organizerId);
+        $totalRegistrations = \App\Models\Registration::whereHas('event', function ($query) use ($organizerId) {
+            $query->where('organizer_id', $organizerId);
         })->count();
 
-        // 3. Tối ưu: Tính trung bình trực tiếp bằng SQL Aggregate Function thay vì vòng lặp foreach trong PHP
-        $avgRatingRaw = \App\Models\Review::whereHas('event', function($query) use ($organizerId) {
-             $query->where('organizer_id', $organizerId);
+        $avgRatingRaw = \App\Models\Review::whereHas('event', function ($query) use ($organizerId) {
+            $query->where('organizer_id', $organizerId);
         })->avg('rating');
 
         $averageRating = $avgRatingRaw ? round($avgRatingRaw, 1) : 0;
@@ -51,16 +87,7 @@ class OrganizerEventController extends Controller
             ->orderBy('created_at', 'desc')
             ->take(5)
             ->get()
-            ->map(function ($event) {
-                return [
-                    'id' => $event->id,
-                    'title' => $event->title,
-                    'start_time' => $event->start_time ? $event->start_time->format('Y-m-d H:i:s') : null,
-                    'registrations_count' => $event->registrations_count,
-                    'capacity' => $event->capacity,
-                    'status' => $event->status,
-                ];
-            });
+            ->map(fn (Event $event) => $this->formatEventSummary($event));
 
         return response()->json([
             'success' => true,
@@ -79,16 +106,7 @@ class OrganizerEventController extends Controller
             ->withCount('registrations')
             ->orderBy('created_at', 'desc')
             ->get()
-            ->map(function ($event) {
-                return [
-                    'id' => $event->id,
-                    'title' => $event->title,
-                    'start_time' => $event->start_time ? $event->start_time->format('Y-m-d H:i:s') : null,
-                    'registrations_count' => $event->registrations_count,
-                    'capacity' => $event->capacity,
-                    'status' => $event->status,
-                ];
-            });
+            ->map(fn (Event $event) => $this->formatEventSummary($event));
 
         return response()->json([
             'success' => true,
@@ -96,30 +114,44 @@ class OrganizerEventController extends Controller
         ]);
     }
 
-    public function show($id)
+    public function show(Request $request, $id)
     {
-        // Lấy sự kiện cùng mối quan hệ đăng ký, thông tin user tương ứng và Đánh giá (reviews)
-        $event = Event::with(['category', 'registrations.user', 'reviews.user:id,name,avatar'])->findOrFail($id);
+        $organizerId = $request->user()->id;
 
-        // 1. Lọc và định dạng danh sách người đã đăng ký chính thức (confirmed)
+        $event = Event::with(['category', 'registrations.user', 'reviews.user:id,name,avatar'])
+            ->where('organizer_id', $organizerId)
+            ->find($id);
+
+        if (!$event) {
+            return response()->json([
+                'success' => false,
+                'message' => __('messages.event_not_found'),
+            ], 404);
+        }
+
         $confirmedList = $event->registrations
             ->where('status', 'approved')
             ->map(function ($registration) {
                 return [
                     'name' => $registration->user->name,
                     'email' => $registration->user->email,
+                    'registration_type' => $registration->registration_type ?? 'individual',
+                    'organization_name' => $registration->organization_name,
+                    'quantity' => $registration->quantity ?? 1,
                     'registered_at' => $registration->created_at->format('d/m/Y H:i'),
                 ];
-            })->values(); // Sử dụng values() để reset lại index của mảng sau khi filter
+            })->values();
 
-        // 2. Lọc và định dạng danh sách người đang nằm ở hàng đợi (waitlist)
         $waitlistList = $event->registrations
             ->where('status', 'pending')
-            ->sortBy('created_at') // Sắp xếp theo thứ tự đăng ký sớm nhất lên đầu để đôn ghế chuẩn FIFO
+            ->sortBy('created_at')
             ->map(function ($registration) {
                 return [
                     'name' => $registration->user->name,
                     'email' => $registration->user->email,
+                    'registration_type' => $registration->registration_type ?? 'individual',
+                    'organization_name' => $registration->organization_name,
+                    'quantity' => $registration->quantity ?? 1,
                     'registered_at' => $registration->created_at->format('d/m/Y H:i'),
                 ];
             })->values();
@@ -133,21 +165,18 @@ class OrganizerEventController extends Controller
                 'location' => $event->location,
                 'start_time' => $event->start_time ? $event->start_time->format('Y-m-d H:i:s') : null,
                 'end_time' => $event->end_time ? $event->end_time->format('Y-m-d H:i:s') : null,
+                'registration_deadline' => $event->registration_deadline ? $event->registration_deadline->format('Y-m-d H:i:s') : null,
                 'capacity' => $event->capacity,
                 'status' => $event->status,
+                'cancel_reason' => $event->cancel_reason,
                 'created_at' => $event->created_at->format('d/m/Y'),
                 'category_name' => $event->category ? $event->category->name : 'N/A',
                 'category_id' => $event->category_id,
                 'image' => $event->image,
-
-                // Số lượng tổng quan để hiển thị ở khối Widget bên phải
-                'confirmed_count' => $confirmedList->count(),
-                'waitlist_count' => $waitlistList->count(),
-
+                'confirmed_count' => $confirmedList->sum('quantity'),
+                'waitlist_count' => $waitlistList->sum('quantity'),
                 'confirmed_users' => $confirmedList,
                 'waitlist_users' => $waitlistList,
-
-                // Thêm dữ liệu Đánh giá
                 'reviews' => $event->reviews->map(function ($review) {
                     return [
                         'id' => $review->id,
@@ -169,7 +198,14 @@ class OrganizerEventController extends Controller
     public function updateStatus(Request $request, $id)
     {
         $organizerId = $request->user()->id;
-        $event = Event::where('organizer_id', $organizerId)->findOrFail($id);
+        $event = Event::where('organizer_id', $organizerId)->find($id);
+
+        if (!$event) {
+            return response()->json([
+                'success' => false,
+                'message' => __('messages.event_not_found'),
+            ], 404);
+        }
 
         $request->validate([
             'status' => 'required|in:draft,published,cancelled'
@@ -180,6 +216,13 @@ class OrganizerEventController extends Controller
                 'success' => false,
                 'message' => 'Sự kiện đã hoàn thành và bị khóa, không thể thay đổi trạng thái.'
             ], 403);
+        }
+
+        if ($request->status === 'published' && $event->start_time && $event->start_time->isPast()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không thể xuất bản sự kiện có thời gian bắt đầu ở quá khứ.'
+            ], 422);
         }
 
         $event->update([
@@ -200,15 +243,15 @@ class OrganizerEventController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'start_time' => 'required|date',
+            'start_time' => 'required|date|after:now',
             'end_time' => 'required|date|after:start_time',
             'location' => 'required|string|max:255',
-            'capacity' => 'required|integer|min:1',
+            'capacity' => 'required|integer|min:1|max:' . self::MAX_EVENT_CAPACITY,
             'category_id' => 'nullable|exists:categories,id',
             'image' => 'nullable|string',
             'status' => 'nullable|in:draft,published',
-            'registration_deadline' => 'nullable|date'
-        ]);
+            'registration_deadline' => 'nullable|date|before_or_equal:start_time'
+        ], $this->eventValidationMessages());
 
         $validated['organizer_id'] = $organizerId;
         if (!isset($validated['status'])) {
@@ -227,23 +270,35 @@ class OrganizerEventController extends Controller
     public function update(Request $request, $id)
     {
         $organizerId = $request->user()->id;
-        $event = Event::where('id', $id)->where('organizer_id', $organizerId)->firstOrFail();
+        $event = Event::where('id', $id)->where('organizer_id', $organizerId)->first();
+
+        if (!$event) {
+            return response()->json([
+                'success' => false,
+                'message' => __('messages.event_not_found'),
+            ], 404);
+        }
 
         $validated = $request->validate([
             'title' => 'sometimes|required|string|max:255',
             'description' => 'nullable|string',
-            'start_time' => 'sometimes|required|date',
+            'start_time' => 'sometimes|required|date|after:now',
             'end_time' => 'sometimes|required|date|after:start_time',
             'location' => 'sometimes|required|string|max:255',
-            'capacity' => 'sometimes|required|integer|min:1',
+            'capacity' => 'sometimes|required|integer|min:1|max:' . self::MAX_EVENT_CAPACITY,
             'category_id' => 'nullable|exists:categories,id',
             'image' => 'nullable|string',
             'status' => 'nullable|in:draft,published,cancelled',
-            'registration_deadline' => 'nullable|date'
-        ]);
+            'registration_deadline' => 'nullable|date|before_or_equal:start_time'
+        ], $this->eventValidationMessages());
 
-        if (isset($validated['status']) && $validated['status'] === 'published') {
-            // Allow publishing even if previously published (no-op)
+        if (isset($validated['status']) && $validated['status'] === 'published' && count($validated) === 1) {
+            if ($event->start_time && $event->start_time->isPast()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Không thể xuất bản sự kiện có thời gian bắt đầu ở quá khứ.'
+                ], 422);
+            }
             $event->status = 'published';
             $event->save();
         } else {
@@ -266,7 +321,14 @@ class OrganizerEventController extends Controller
     public function cancel(Request $request, $id)
     {
         $organizerId = $request->user()->id;
-        $event = Event::where('id', $id)->where('organizer_id', $organizerId)->firstOrFail();
+        $event = Event::where('id', $id)->where('organizer_id', $organizerId)->first();
+
+        if (!$event) {
+            return response()->json([
+                'success' => false,
+                'message' => __('messages.event_not_found'),
+            ], 404);
+        }
 
         $validated = $request->validate([
             'cancel_reason' => 'required|string'

@@ -14,7 +14,7 @@ Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/google', [AuthController::class, 'googleLogin']);
-    
+
     // Email verification routes
     Route::get('/email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail']);
     Route::post('/email/verification-notification', [AuthController::class, 'resendVerificationEmail']);
@@ -22,7 +22,7 @@ Route::prefix('auth')->group(function () {
     Route::middleware('auth:api')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/me', [AuthController::class, 'me']);
-        
+
         // Profile routes
         Route::prefix('profile')->group(function () {
             Route::put('/info', [\App\Http\Controllers\ProfileController::class, 'updateInfo']);
@@ -51,8 +51,8 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/events/{id}/cancel', [RegistrationController::class, 'cancel']);
     Route::post('/events/{id}/reviews', [ReviewController::class, 'store']);
 
-    // Organizer Dashboard routes
-    Route::prefix('organizer')->group(function () {
+    // Organizer Dashboard routes (chỉ Organizer được phép truy cập)
+    Route::prefix('organizer')->middleware('role:organizer')->group(function () {
         Route::get('/dashboard/stats', [OrganizerEventController::class, 'getDashboardStats']);
         Route::get('/dashboard/events', [OrganizerEventController::class, 'getRecentEvents']);
         Route::get('/events', [OrganizerEventController::class, 'index']);
@@ -64,7 +64,7 @@ Route::middleware('auth:api')->group(function () {
     });
 
     // Attendee Dashboard routes (REQ_11)
-    Route::prefix('attendee')->group(function () {
+    Route::prefix('attendee')->middleware('role:attendee')->group(function () {
         Route::get('/dashboard/stats', [AttendeeController::class, 'getDashboardStats']);
         Route::get('/dashboard/registrations', [AttendeeController::class, 'getRegistrations']);
         Route::get('/dashboard/done', [AttendeeController::class, 'getDoneRegistrations']);

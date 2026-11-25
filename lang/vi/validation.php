@@ -2,7 +2,12 @@
 
 return [
     'required' => 'Trường :attribute là bắt buộc.',
+    'required_if' => 'Trường :attribute là bắt buộc.',
     'email' => 'Trường :attribute phải là địa chỉ email hợp lệ.',
+    'date' => 'Trường :attribute không đúng định dạng ngày giờ.',
+    'after' => 'Trường :attribute phải sau :date.',
+    'before_or_equal' => 'Trường :attribute phải trước hoặc bằng :date.',
+    'regex' => 'Trường :attribute không đúng định dạng.',
     'min' => [
         'numeric' => 'Trường :attribute phải tối thiểu :min.',
         'file' => 'Trường :attribute phải tối thiểu :min kilobytes.',
@@ -18,4 +23,17 @@ return [
     'unique' => 'Trường :attribute đã tồn tại trên hệ thống.',
     'in' => 'Giá trị đã chọn cho :attribute không hợp lệ.',
     'integer' => 'Trường :attribute phải là số nguyên.',
+    'attributes' => [
+        'title' => 'tên sự kiện',
+        'start_time' => 'thời gian bắt đầu',
+        'end_time' => 'thời gian kết thúc',
+        'registration_deadline' => 'hạn đăng ký',
+        'location' => 'địa điểm',
+        'capacity' => 'sức chứa',
+        'phone' => 'số điện thoại',
+        'comment' => 'nội dung bình luận',
+        'rating' => 'số sao đánh giá',
+        'organization_name' => 'tên tổ chức',
+        'quantity' => 'số lượng chỗ',
+    ],
 ];

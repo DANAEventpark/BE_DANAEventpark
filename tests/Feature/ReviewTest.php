@@ -104,10 +104,10 @@ class ReviewTest extends TestCase
             ->assertJsonValidationErrors(['rating']);
     }
 
-    public function test_it_fails_submitting_review_with_missing_comment()
+    public function test_it_allows_submitting_review_with_rating_only_and_null_comment()
     {
         $user = User::factory()->create();
-        $event = Event::factory()->create();
+        $event = Event::factory()->create(['end_time' => now()->subHour()]);
 
         // Create approved registration
         Registration::factory()->create([
@@ -121,8 +121,65 @@ class ReviewTest extends TestCase
                 'rating' => 4,
             ]);
 
+        $response->assertStatus(200)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.rating', 4)
+            ->assertJsonPath('data.comment', null);
+
+        $this->assertDatabaseHas('reviews', [
+            'event_id' => $event->id,
+            'user_id' => $user->id,
+            'rating' => 4,
+            'comment' => null,
+        ]);
+    }
+
+    public function test_it_rejects_review_comment_exceeding_300_characters()
+    {
+        $user = User::factory()->create();
+        $event = Event::factory()->create(['end_time' => now()->subHour()]);
+
+        Registration::factory()->create([
+            'event_id' => $event->id,
+            'user_id' => $user->id,
+            'status' => 'approved',
+        ]);
+
+        $response = $this->actingAsJwt($user)
+            ->postJson("/api/events/{$event->id}/reviews", [
+                'rating' => 5,
+                'comment' => str_repeat('a', 301),
+            ]);
+
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['comment']);
+    }
+
+    public function test_it_rejects_duplicate_review_from_same_user()
+    {
+        $user = User::factory()->create();
+        $event = Event::factory()->create(['end_time' => now()->subHour()]);
+
+        Registration::factory()->create([
+            'event_id' => $event->id,
+            'user_id' => $user->id,
+            'status' => 'approved',
+        ]);
+
+        $this->actingAsJwt($user)
+            ->postJson("/api/events/{$event->id}/reviews", [
+                'rating' => 5,
+                'comment' => 'Lần 1',
+            ])->assertStatus(200);
+
+        $response = $this->actingAsJwt($user)
+            ->postJson("/api/events/{$event->id}/reviews", [
+                'rating' => 4,
+                'comment' => 'Lần 2',
+            ]);
+
+        $response->assertStatus(409)
+            ->assertJsonPath('success', false);
     }
 
     public function test_it_fails_submitting_review_with_invalid_rating()

@@ -24,8 +24,10 @@ class AuthController extends Controller
             'name'     => 'required|string|max:255',
             'email'    => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
-            'phone'    => 'nullable|string|max:15',
+            'phone'    => ['nullable', 'string', 'regex:/^[0-9]{10,11}$/'],
             'role'     => 'in:attendee,organizer',
+        ], [
+            'phone.regex' => 'SĐT không hợp lệ. Vui lòng nhập số (10-11 chữ số).',
         ]);
 
 

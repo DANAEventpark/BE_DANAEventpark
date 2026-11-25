@@ -14,11 +14,20 @@ class ReviewController extends Controller
     {
         $request->validate([
             'rating' => 'required|integer|min:1|max:5',
-            'comment' => 'required|string',
+            'comment' => 'nullable|string|max:300',
+        ], [
+            'comment.max' => 'Nhận xét không được vượt quá 300 ký tự.',
         ]);
 
         $user = Auth::user();
-        $event = Event::findOrFail($eventId);
+        $event = Event::find($eventId);
+
+        if (!$event) {
+            return response()->json([
+                'success' => false,
+                'message' => __('messages.event_not_found'),
+            ], 404);
+        }
 
         // Check if the user has an approved registration for this event
         $isRegistered = Registration::where('event_id', $eventId)
@@ -40,11 +49,25 @@ class ReviewController extends Controller
             ], 403);
         }
 
+        // Prevent duplicate reviews from the same user on the same event
+        $alreadyReviewed = Review::where('event_id', $eventId)
+            ->where('user_id', $user->id)
+            ->exists();
+
+        if ($alreadyReviewed) {
+            return response()->json([
+                'success' => false,
+                'message' => __('messages.review_duplicate')
+            ], 409);
+        }
+
+        $trimmedComment = $request->filled('comment') ? trim((string) $request->comment) : null;
+
         $review = Review::create([
             'event_id' => $eventId,
             'user_id' => $user->id,
             'rating' => $request->rating,
-            'comment' => $request->comment,
+            'comment' => $trimmedComment !== '' ? $trimmedComment : null,
         ]);
 
         // Load user info for response
@@ -113,4 +136,3 @@ class ReviewController extends Controller
         ]);
     }
 }
-
