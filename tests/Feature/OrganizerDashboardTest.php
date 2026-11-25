@@ -31,9 +31,7 @@ class OrganizerDashboardTest extends TestCase
             'role' => 'organizer'
         ]);
 
-        if ($registerResponse->status() !== 201) {
-            dd($registerResponse->json());
-        }
+        $registerResponse->assertStatus(201);
         
         $token = $registerResponse->json('data.token');
 

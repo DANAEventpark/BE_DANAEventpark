@@ -13,12 +13,28 @@ class ReviewController extends Controller
     public function store(Request $request, $eventId)
     {
         $request->validate([
-            'rating' => 'required|integer|min:1|max:5',
-            'comment' => 'required|string',
+            'rating'  => 'required|integer|min:1|max:5',
+            // BUG-020 Fix: Giới hạn 300 ký tự ở backend
+            // BUG-021 Fix: Comment là nullable (không bắt buộc)
+            'comment' => 'nullable|string|max:300',
+        ], [
+            'comment.max' => 'Bình luận không được vượt quá 300 ký tự.',
         ]);
 
-        $user = Auth::user();
+        $user  = Auth::user();
         $event = Event::findOrFail($eventId);
+
+        // BUG-019 Fix: Kiểm tra duplicate review (đã có sẵn, đảm bảo chạy đúng)
+        $existingReview = Review::where('event_id', $eventId)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if ($existingReview) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn đã đánh giá sự kiện này rồi.'
+            ], 400);
+        }
 
         // Check if the user has an approved registration for this event
         $isRegistered = Registration::where('event_id', $eventId)
@@ -36,7 +52,7 @@ class ReviewController extends Controller
         if ($event->end_time && now()->lessThan($event->end_time)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Bạn chỉ có thể đánh giá sau khi sự kiện đã kết thúc!'
+                'message' => __('messages.review_event_not_ended')
             ], 403);
         }
 

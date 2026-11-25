@@ -13,8 +13,10 @@ class ProfileController extends Controller
 
         $data = $request->validate([
             'name'   => 'required|string|max:255',
-            'phone'  => 'nullable|string|max:15',
+            'phone'  => ['nullable', 'string', 'regex:/^[0-9]{10,11}$/'],
             'avatar' => 'nullable|string',
+        ], [
+            'phone.regex' => 'SĐT không hợp lệ. Vui lòng nhập số',
         ]);
 
         $user->update($data);

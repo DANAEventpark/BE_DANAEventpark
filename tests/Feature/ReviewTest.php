@@ -15,7 +15,10 @@ class ReviewTest extends TestCase
     public function test_it_can_submit_a_review_successfully()
     {
         $user = User::factory()->create();
-        $event = Event::factory()->create();
+        $event = Event::factory()->create([
+            'start_time' => now()->subDays(2),
+            'end_time'   => now()->subDay(),
+        ]);
 
         // Create approved registration
         Registration::factory()->create([
@@ -86,7 +89,10 @@ class ReviewTest extends TestCase
     public function test_it_fails_submitting_review_with_missing_rating()
     {
         $user = User::factory()->create();
-        $event = Event::factory()->create();
+        $event = Event::factory()->create([
+            'start_time' => now()->subDays(2),
+            'end_time'   => now()->subDay(),
+        ]);
 
         // Create approved registration
         Registration::factory()->create([
@@ -104,10 +110,13 @@ class ReviewTest extends TestCase
             ->assertJsonValidationErrors(['rating']);
     }
 
-    public function test_it_fails_submitting_review_with_missing_comment()
+    public function test_it_can_submit_review_without_comment()
     {
         $user = User::factory()->create();
-        $event = Event::factory()->create();
+        $event = Event::factory()->create([
+            'start_time' => now()->subDays(2),
+            'end_time'   => now()->subDay(),
+        ]);
 
         // Create approved registration
         Registration::factory()->create([
@@ -121,14 +130,17 @@ class ReviewTest extends TestCase
                 'rating' => 4,
             ]);
 
-        $response->assertStatus(422)
-            ->assertJsonValidationErrors(['comment']);
+        $response->assertStatus(200)
+            ->assertJsonPath('success', true);
     }
 
     public function test_it_fails_submitting_review_with_invalid_rating()
     {
         $user = User::factory()->create();
-        $event = Event::factory()->create();
+        $event = Event::factory()->create([
+            'start_time' => now()->subDays(2),
+            'end_time'   => now()->subDay(),
+        ]);
 
         // Create approved registration
         Registration::factory()->create([
@@ -167,6 +179,31 @@ class ReviewTest extends TestCase
             ]);
 
         $response->assertStatus(404);
+    }
+
+    public function test_it_fails_submitting_review_if_event_has_not_ended()
+    {
+        $user = User::factory()->create();
+        $event = Event::factory()->create([
+            'start_time' => now()->addDay(),
+            'end_time'   => now()->addDays(2),
+        ]);
+
+        Registration::factory()->create([
+            'event_id' => $event->id,
+            'user_id'  => $user->id,
+            'status'   => 'approved',
+        ]);
+
+        $response = $this->actingAsJwt($user)
+            ->postJson("/api/events/{$event->id}/reviews", [
+                'rating'  => 5,
+                'comment' => 'Sự kiện chưa diễn ra nhưng đã review!',
+            ]);
+
+        $response->assertStatus(403)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', __('messages.review_event_not_ended'));
     }
 }
 

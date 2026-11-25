@@ -128,7 +128,7 @@ class AuthController extends Controller
     public function verifyEmail(Request $request, $id, $hash)
     {
         $user = User::find($id);
-        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+        $frontendUrl = config('app.frontend_url');
 
         if (!$user) {
             return redirect($frontendUrl . '/login?error=user_not_found');

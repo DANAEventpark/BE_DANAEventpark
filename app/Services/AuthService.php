@@ -6,7 +6,6 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Tymon\JWTAuth\Facades\JWTAuth;
-use Illuminate\Auth\Events\Registered;
 
 class AuthService
 {
@@ -31,9 +30,7 @@ class AuthService
 
         $user->load('role');
 
-        event(new Registered($user));
-
-        $token = JWTAuth::fromUser($user);
+        $token = $this->issueToken($user);
 
         return [
             'user' => $user,
@@ -64,7 +61,7 @@ class AuthService
             ]);
         }
 
-        $token = JWTAuth::fromUser($user);
+        $token = $this->issueToken($user);
 
         return [
             'user' => $user,
@@ -95,17 +92,38 @@ class AuthService
             ]);
             $user->markEmailAsVerified();
         } elseif (!$user->google_id) {
-            $user->update(['google_id' => $data['google_id']]);
+            $user->update([
+                'google_id' => $data['google_id'],
+                'avatar'    => $data['avatar'] ?? $user->avatar,
+            ]);
+        } else {
+            // Đồng bộ avatar mỗi lần đăng nhập Google
+            if (!empty($data['avatar'])) {
+                $user->update(['avatar' => $data['avatar']]);
+            }
         }
 
         $user->load('role');
 
-        $token = JWTAuth::fromUser($user);
+        $token = $this->issueToken($user);
 
         return [
             'user' => $user,
             'token' => $token,
         ];
+    }
+
+    /**
+     * Issue JWT token and store its hash for single-session enforcement.
+     */
+    private function issueToken(User $user): string
+    {
+        $token = JWTAuth::fromUser($user);
+        $user->forceFill([
+            'remember_token' => hash('sha256', $token),
+        ])->save();
+
+        return $token;
     }
 
     /**
@@ -116,6 +134,7 @@ class AuthService
      */
     public function logout(User $user): void
     {
+        $user->forceFill(['remember_token' => null])->save();
         JWTAuth::invalidate(JWTAuth::getToken());
     }
 }

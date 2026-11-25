@@ -85,12 +85,16 @@ class EventController extends Controller
             }
         ])->findOrFail($id);
 
-        // Check registration for current authenticated user
+        // Check registration and review for current authenticated user
         $userRegistration = null;
+        $userReview = null;
         try {
             $user = auth('api')->user();
             if ($user) {
                 $userRegistration = \App\Models\Registration::where('event_id', $id)
+                    ->where('user_id', $user->id)
+                    ->first();
+                $userReview = \App\Models\Review::where('event_id', $id)
                     ->where('user_id', $user->id)
                     ->first();
             }
@@ -101,7 +105,8 @@ class EventController extends Controller
         return response()->json([
             'success' => true,
             'data' => $event,
-            'user_registration' => $userRegistration
+            'user_registration' => $userRegistration,
+            'user_review' => $userReview
         ]);
     }
 
@@ -112,9 +117,13 @@ class EventController extends Controller
     public function getSystemStats()
     {
         try {
-            $totalEvents = DB::table('events')->where('status', 'published')->count();
+            $totalEvents = DB::table('events')
+                ->where('status', 'published')
+                ->where('start_time', '>=', now())
+                ->count();
             $totalRegistrations = DB::table('registrations')->where('status', 'approved')->count();
-            $totalOrganizers = DB::table('users')->where('role_id', 2)->count();
+            $organizerRoleId = DB::table('roles')->where('name', 'organizer')->value('id') ?? 2;
+            $totalOrganizers = DB::table('users')->where('role_id', $organizerRoleId)->count();
 
             return response()->json([
                 'success' => true,

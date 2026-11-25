@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Event;
 use App\Models\Registration;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class RegistrationController extends Controller
 {
@@ -14,7 +15,21 @@ class RegistrationController extends Controller
         $user  = Auth::user();
         $event = Event::findOrFail($eventId);
 
-        // Lấy số ghế muốn đăng ký (mặc định 1, organizer có thể truyền nhiều hơn)
+        if ($event->status !== 'published') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sự kiện hiện không mở đăng ký.'
+            ], 400);
+        }
+
+        if ($event->registration_deadline && now()->greaterThan($event->registration_deadline)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã hết hạn đăng ký cho sự kiện này.'
+            ], 400);
+        }
+
+        // Lấy số ghế muốn đăng ký (mặc định 1)
         $seats = (int) $request->input('seats', 1);
         if ($seats < 1) {
             return response()->json([
@@ -26,6 +41,7 @@ class RegistrationController extends Controller
         // ─── Ràng buộc 1: Kiểm tra đã đăng ký chưa ───────────────────────────
         $existing = Registration::where('event_id', $eventId)
                                 ->where('user_id', $user->id)
+                                ->whereIn('status', ['approved', 'pending'])
                                 ->first();
 
         if ($existing) {
@@ -41,12 +57,10 @@ class RegistrationController extends Controller
         }
 
         // ─── Ràng buộc 2: Cảnh báo trùng thời gian sự kiện ──────────────────
-        // Lấy tất cả sự kiện mà người dùng đã đăng ký (approved/pending)
         $conflictingRegistration = Registration::where('user_id', $user->id)
             ->whereIn('status', ['approved', 'pending'])
             ->whereHas('event', function ($q) use ($event) {
                 $q->where('id', '!=', $event->id)
-                  // Kiểm tra khoảng thời gian sự kiện bị chồng lặp
                   ->where('start_time', '<', $event->end_time)
                   ->where('end_time',   '>', $event->start_time);
             })
@@ -71,35 +85,54 @@ class RegistrationController extends Controller
             ], 409);
         }
 
-        // ─── Ràng buộc 3: Kiểm tra số ghế không vượt giới hạn sức chứa ──────
-        $approvedSeats = Registration::where('event_id', $eventId)
-                                     ->where('status', 'approved')
-                                     ->sum('seats');
-
-        // Số ghế yêu cầu phải nhỏ hơn giới hạn của sự kiện (< capacity, không phải <=)
-        if ($seats >= $event->capacity) {
+        // ─── Ràng buộc 3: Số ghế không được vượt quá capacity ───────────────
+        if ($seats > $event->capacity) {
             return response()->json([
                 'success' => false,
-                'message' => 'Số ghế đăng ký (' . $seats . ') phải nhỏ hơn giới hạn đăng ký của sự kiện (' . $event->capacity . ' ghế).'
+                'message' => 'Số ghế đăng ký (' . $seats . ') không được vượt quá giới hạn của sự kiện (' . $event->capacity . ' ghế).'
             ], 422);
         }
 
-        // Xác định status dựa trên chỗ còn trống
-        $availableSeats = $event->capacity - $approvedSeats;
-        if ($seats <= $availableSeats) {
-            $status  = 'approved';
-            $message = __('messages.register_event_success');
-        } else {
-            $status  = 'pending';
-            $message = __('messages.register_event_waitlist');
-        }
+        // ─── Xác định trạng thái dựa trên chỗ còn trống ─────────────────────
+        $registration = DB::transaction(function () use ($eventId, $user, $event, $seats, &$status, &$message, $request) {
+            $approvedSeats = Registration::where('event_id', $eventId)
+                                           ->where('status', 'approved')
+                                           ->lockForUpdate()
+                                           ->sum('seats');
+            $hasWaitlist = Registration::where('event_id', $eventId)
+                                       ->where('status', 'pending')
+                                       ->exists();
 
-        $registration = Registration::create([
-            'event_id' => $eventId,
-            'user_id'  => $user->id,
-            'status'   => $status,
-            'seats'    => $seats,
-        ]);
+            $availableSeats = $event->capacity - $approvedSeats;
+            $status = (!$hasWaitlist && $seats <= $availableSeats) ? 'approved' : 'pending';
+            $message = $status === 'approved'
+                ? __('messages.register_event_success')
+                : __('messages.register_event_waitlist');
+
+            $cancelledReg = Registration::where('event_id', $eventId)
+                ->where('user_id', $user->id)
+                ->where('status', 'cancelled')
+                ->first();
+
+            $orgName = $request->input('organization_name');
+
+            if ($cancelledReg) {
+                $cancelledReg->update([
+                    'status'            => $status,
+                    'seats'             => $seats,
+                    'organization_name' => $orgName,
+                ]);
+                return $cancelledReg->fresh();
+            }
+
+            return Registration::create([
+                'event_id'          => $eventId,
+                'user_id'           => $user->id,
+                'status'            => $status,
+                'seats'             => $seats,
+                'organization_name' => $orgName,
+            ]);
+        });
 
         return response()->json([
             'success' => true,
@@ -113,7 +146,6 @@ class RegistrationController extends Controller
         $user  = Auth::user();
         $event = Event::findOrFail($eventId);
 
-        // Tìm đăng ký hiện tại có trạng thái approved hoặc pending của người dùng này
         $registration = Registration::where('event_id', $eventId)
                                     ->where('user_id', $user->id)
                                     ->whereIn('status', ['approved', 'pending'])
@@ -126,7 +158,7 @@ class RegistrationController extends Controller
             ], 400);
         }
 
-        // Kiểm tra thời hạn hủy (chưa tới hạn đóng đăng ký)
+        // Kiểm tra thời hạn hủy
         $now      = now();
         $deadline = $event->registration_deadline;
 
@@ -137,34 +169,34 @@ class RegistrationController extends Controller
             ], 400);
         }
 
-        // Cập nhật trạng thái thành cancelled
         $wasApproved = $registration->status === 'approved';
         $freedSeats  = $registration->seats;
-        $registration->update(['status' => 'cancelled']);
 
-        // Tự động đẩy người tiếp theo trong danh sách chờ lên nếu có chỗ trống
-        if ($wasApproved) {
-            $remainingSeats = $freedSeats;
-            $pendingQueue   = Registration::where('event_id', $eventId)
-                                          ->where('status', 'pending')
-                                          ->orderBy('created_at', 'asc')
-                                          ->get();
+        // Dùng transaction để tránh race condition overbooking
+        DB::transaction(function () use ($registration, $wasApproved, $freedSeats, $eventId) {
+            $registration->update(['status' => 'cancelled']);
 
-            foreach ($pendingQueue as $nextPending) {
-                if ($remainingSeats <= 0) {
-                    break;
-                }
-                if ($nextPending->seats <= $remainingSeats) {
-                    $nextPending->update(['status' => 'approved']);
-                    $remainingSeats -= $nextPending->seats;
+            if ($wasApproved) {
+                $remainingSeats = $freedSeats;
+                $pendingQueue   = Registration::where('event_id', $eventId)
+                                              ->where('status', 'pending')
+                                              ->orderBy('created_at', 'asc')
+                                              ->get();
+
+                foreach ($pendingQueue as $nextPending) {
+                    if ($remainingSeats <= 0) break;
+                    if ($nextPending->seats <= $remainingSeats) {
+                        $nextPending->update(['status' => 'approved']);
+                        $remainingSeats -= $nextPending->seats;
+                    }
                 }
             }
-        }
+        });
 
         return response()->json([
             'success' => true,
             'message' => 'Hủy đăng ký tham gia sự kiện thành công!',
-            'data'    => $registration
+            'data'    => $registration->fresh()
         ]);
     }
 }

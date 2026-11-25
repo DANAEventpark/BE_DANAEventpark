@@ -17,17 +17,14 @@ class OrganizerEventController extends Controller
     {
         $organizerId = $request->user()->id;
 
-        // 1. Tổng sự kiện do organizer này tổ chức
         $totalEvents = Event::where('organizer_id', $organizerId)->count();
 
-        // 2. Tổng số chỗ đã đăng ký (approved) — tính theo seats, không phải số hàng
-        $totalRegistrations = \App\Models\Registration::whereHas('event', function($query) use ($organizerId) {
-             $query->where('organizer_id', $organizerId);
+        $totalRegistrations = \App\Models\Registration::whereHas('event', function ($query) use ($organizerId) {
+            $query->where('organizer_id', $organizerId);
         })->where('status', 'approved')->sum('seats');
 
-        // 3. Tính trung bình rating
-        $avgRatingRaw = \App\Models\Review::whereHas('event', function($query) use ($organizerId) {
-             $query->where('organizer_id', $organizerId);
+        $avgRatingRaw = \App\Models\Review::whereHas('event', function ($query) use ($organizerId) {
+            $query->where('organizer_id', $organizerId);
         })->avg('rating');
 
         $averageRating = $avgRatingRaw ? round($avgRatingRaw, 1) : 0;
@@ -35,9 +32,9 @@ class OrganizerEventController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
-                'total_events'         => $totalEvents,
-                'total_registrations'  => $totalRegistrations,
-                'average_rating'       => $averageRating
+                'total_events'        => $totalEvents,
+                'total_registrations' => $totalRegistrations,
+                'average_rating'      => $averageRating,
             ]
         ]);
     }
@@ -60,7 +57,13 @@ class OrganizerEventController extends Controller
                 return [
                     'id'                  => $event->id,
                     'title'               => $event->title,
+                    'description'         => $event->description,
+                    'location'            => $event->location,
                     'start_time'          => $event->start_time ? $event->start_time->format('Y-m-d H:i:s') : null,
+                    'end_time'            => $event->end_time ? $event->end_time->format('Y-m-d H:i:s') : null,
+                    'registration_deadline' => $event->registration_deadline ? $event->registration_deadline->format('Y-m-d H:i:s') : null,
+                    'category_id'         => $event->category_id,
+                    'image'               => $event->image,
                     'registrations_count' => (int) ($event->approved_seats_sum ?? 0),
                     'capacity'            => $event->capacity,
                     'status'              => $event->status,
@@ -69,7 +72,7 @@ class OrganizerEventController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => $events
+            'data'    => $events,
         ]);
     }
 
@@ -90,7 +93,13 @@ class OrganizerEventController extends Controller
                 return [
                     'id'                  => $event->id,
                     'title'               => $event->title,
+                    'description'         => $event->description,
+                    'location'            => $event->location,
                     'start_time'          => $event->start_time ? $event->start_time->format('Y-m-d H:i:s') : null,
+                    'end_time'            => $event->end_time ? $event->end_time->format('Y-m-d H:i:s') : null,
+                    'registration_deadline' => $event->registration_deadline ? $event->registration_deadline->format('Y-m-d H:i:s') : null,
+                    'category_id'         => $event->category_id,
+                    'image'               => $event->image,
                     'registrations_count' => (int) ($event->approved_seats_sum ?? 0),
                     'capacity'            => $event->capacity,
                     'status'              => $event->status,
@@ -99,82 +108,79 @@ class OrganizerEventController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => $events
+            'data'    => $events,
         ]);
     }
 
-    public function show($id)
+    /**
+     * Lấy chi tiết sự kiện — chỉ cho phép organizer xem sự kiện của chính mình
+     */
+    public function show(Request $request, $id)
     {
-        // Lấy sự kiện cùng mối quan hệ đăng ký, thông tin user tương ứng và Đánh giá (reviews)
-        $event = Event::with(['category', 'registrations.user', 'reviews.user:id,name,avatar'])->findOrFail($id);
+        $organizerId = $request->user()->id;
 
-        // 1. Lọc và định dạng danh sách người đã đăng ký chính thức (confirmed)
+        $event = Event::with(['category', 'registrations.user', 'reviews.user:id,name,avatar'])
+            ->where('organizer_id', $organizerId)
+            ->findOrFail($id);
+
         $confirmedList = $event->registrations
             ->where('status', 'approved')
-            ->map(function ($registration) {
+            ->map(function ($reg) {
                 return [
-                    'name'          => $registration->user->name,
-                    'email'         => $registration->user->email,
-                    'seats'         => $registration->seats ?? 1,
-                    'registered_at' => $registration->created_at->format('d/m/Y H:i'),
+                    'name'          => $reg->user->name,
+                    'email'         => $reg->user->email,
+                    'seats'         => $reg->seats ?? 1,
+                    'registered_at' => $reg->created_at->format('d/m/Y H:i'),
                 ];
             })->values();
 
-        // 2. Lọc và định dạng danh sách người đang nằm ở hàng đợi (waitlist)
         $waitlistList = $event->registrations
             ->where('status', 'pending')
             ->sortBy('created_at')
-            ->map(function ($registration) {
+            ->map(function ($reg) {
                 return [
-                    'name'          => $registration->user->name,
-                    'email'         => $registration->user->email,
-                    'seats'         => $registration->seats ?? 1,
-                    'registered_at' => $registration->created_at->format('d/m/Y H:i'),
+                    'name'          => $reg->user->name,
+                    'email'         => $reg->user->email,
+                    'seats'         => $reg->seats ?? 1,
+                    'registered_at' => $reg->created_at->format('d/m/Y H:i'),
                 ];
             })->values();
-
-        // Tổng số ghế confirmed/waitlist (tính theo seats, không phải số hàng)
-        $confirmedSeats = $confirmedList->sum('seats');
-        $waitlistSeats  = $waitlistList->sum('seats');
 
         return response()->json([
             'success' => true,
             'data' => [
-                'id'          => $event->id,
-                'title'       => $event->title,
-                'description' => $event->description,
-                'location'    => $event->location,
-                'start_time'  => $event->start_time ? $event->start_time->format('Y-m-d H:i:s') : null,
-                'end_time'    => $event->end_time   ? $event->end_time->format('Y-m-d H:i:s')   : null,
-                'capacity'    => $event->capacity,
-                'status'      => $event->status,
-                'created_at'  => $event->created_at->format('d/m/Y'),
-                'category_name' => $event->category ? $event->category->name : 'N/A',
-                'category_id'   => $event->category_id,
-                'image'         => $event->image,
-
-                // Số ghế (seats) thay vì số hàng
-                'confirmed_count' => $confirmedSeats,
-                'waitlist_count'  => $waitlistSeats,
-
+                'id'              => $event->id,
+                'title'           => $event->title,
+                'description'     => $event->description,
+                'location'        => $event->location,
+                'start_time'      => $event->start_time ? $event->start_time->format('Y-m-d H:i:s') : null,
+                'end_time'        => $event->end_time   ? $event->end_time->format('Y-m-d H:i:s')   : null,
+                'capacity'        => $event->capacity,
+                'status'          => $event->status,
+                'created_at'      => $event->created_at->format('d/m/Y'),
+                'category_name'   => $event->category ? $event->category->name : 'N/A',
+                'category_id'     => $event->category_id,
+                'image'           => $event->image,
+                'confirmed_count' => $confirmedList->sum('seats'),
+                'waitlist_count'  => $waitlistList->sum('seats'),
                 'confirmed_users' => $confirmedList,
                 'waitlist_users'  => $waitlistList,
-
-                // Thêm dữ liệu Đánh giá
                 'reviews' => $event->reviews->map(function ($review) {
                     return [
                         'id'         => $review->id,
                         'rating'     => $review->rating,
                         'comment'    => $review->comment,
                         'created_at' => $review->created_at->format('d/m/Y H:i'),
-                        'user' => [
+                        'user'       => [
                             'name'   => $review->user->name ?? 'Người dùng',
-                            'avatar' => $review->user->avatar ?? null
-                        ]
+                            'avatar' => $review->user->avatar ?? null,
+                        ],
                     ];
                 })->sortByDesc('created_at')->values(),
-                'average_rating' => $event->reviews->count() > 0 ? round($event->reviews->avg('rating'), 1) : null,
-                'total_reviews'  => $event->reviews->count()
+                'average_rating' => $event->reviews->count() > 0
+                    ? round($event->reviews->avg('rating'), 1)
+                    : null,
+                'total_reviews'  => $event->reviews->count(),
             ]
         ], 200);
     }
@@ -191,18 +197,16 @@ class OrganizerEventController extends Controller
         if ($event->status === 'done') {
             return response()->json([
                 'success' => false,
-                'message' => 'Sự kiện đã hoàn thành và bị khóa, không thể thay đổi trạng thái.'
+                'message' => 'Sự kiện đã hoàn thành và bị khóa, không thể thay đổi trạng thái.',
             ], 403);
         }
 
-        $event->update([
-            'status' => $request->status
-        ]);
+        $event->update(['status' => $request->status]);
 
         return response()->json([
             'success' => true,
             'message' => 'Cập nhật trạng thái thành công',
-            'data' => $event
+            'data'    => $event,
         ]);
     }
 
@@ -211,29 +215,30 @@ class OrganizerEventController extends Controller
         $organizerId = $request->user()->id;
 
         $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'start_time' => 'required|date',
-            'end_time' => 'required|date|after:start_time',
-            'location' => 'required|string|max:255',
-            'capacity' => 'required|integer|min:1',
-            'category_id' => 'nullable|exists:categories,id',
-            'image' => 'nullable|string',
-            'status' => 'nullable|in:draft,published',
-            'registration_deadline' => 'nullable|date'
+            'title'                 => 'required|string|max:255',
+            'description'           => 'nullable|string',
+            'start_time'            => 'required|date|after_or_equal:today',
+            'end_time'              => 'required|date|after:start_time',
+            'location'              => 'required|string|max:255',
+            'capacity'              => 'required|integer|min:1|max:100000',
+            'category_id'           => 'nullable|exists:categories,id',
+            'image'                 => 'nullable|string',
+            'status'                => 'nullable|in:draft,published',
+            'registration_deadline' => 'nullable|date',
+        ], [
+            'start_time.after_or_equal' => 'Thời gian bắt đầu không thể ở quá khứ.',
+            'capacity.max'              => 'Sức chứa không được vượt quá 100.000 người.',
         ]);
 
         $validated['organizer_id'] = $organizerId;
-        if (!isset($validated['status'])) {
-            $validated['status'] = 'draft';
-        }
+        $validated['status']       = $validated['status'] ?? 'draft';
 
         $event = Event::create($validated);
 
         return response()->json([
             'success' => true,
             'message' => 'Tạo sự kiện thành công.',
-            'data' => $event
+            'data'    => $event,
         ], 201);
     }
 
@@ -242,37 +247,36 @@ class OrganizerEventController extends Controller
         $organizerId = $request->user()->id;
         $event = Event::where('id', $id)->where('organizer_id', $organizerId)->firstOrFail();
 
+        // Chặn sửa nội dung sự kiện đã published (chỉ cho phép nếu chỉ cập nhật status)
+        if ($event->status === 'published' && count($request->except(['status'])) > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không thể chỉnh sửa sự kiện đã đăng (published). Hãy dùng chức năng đổi trạng thái.',
+            ], 403);
+        }
+
         $validated = $request->validate([
-            'title' => 'sometimes|required|string|max:255',
-            'description' => 'nullable|string',
-            'start_time' => 'sometimes|required|date',
-            'end_time' => 'sometimes|required|date|after:start_time',
-            'location' => 'sometimes|required|string|max:255',
-            'capacity' => 'sometimes|required|integer|min:1',
-            'category_id' => 'nullable|exists:categories,id',
-            'image' => 'nullable|string',
-            'status' => 'nullable|in:draft,published,cancelled',
-            'registration_deadline' => 'nullable|date'
+            'title'                 => 'sometimes|required|string|max:255',
+            'description'           => 'nullable|string',
+            'start_time'            => 'sometimes|required|date|after_or_equal:today',
+            'end_time'              => 'sometimes|required|date|after:start_time',
+            'location'              => 'sometimes|required|string|max:255',
+            'capacity'              => 'sometimes|required|integer|min:1|max:100000',
+            'category_id'           => 'nullable|exists:categories,id',
+            'image'                 => 'nullable|string',
+            'status'                => 'nullable|in:draft,published,cancelled',
+            'registration_deadline' => 'nullable|date',
+        ], [
+            'start_time.after_or_equal' => 'Thời gian bắt đầu không thể ở quá khứ.',
+            'capacity.max'              => 'Sức chứa không được vượt quá 100.000 người.',
         ]);
 
-        if (isset($validated['status']) && $validated['status'] === 'published') {
-            // Allow publishing even if previously published (no-op)
-            $event->status = 'published';
-            $event->save();
-        } else {
-            if ($event->status === 'published') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Không thể chỉnh sửa sự kiện đã đăng (published).'
-                ], 403);
-            }
-            $event->update($validated);
-        }
+        $event->update($validated);
 
         return response()->json([
             'success' => true,
             'message' => 'Cập nhật sự kiện thành công.',
-            'data' => $event
+            'data'    => $event->fresh(),
         ]);
     }
 
@@ -289,7 +293,6 @@ class OrganizerEventController extends Controller
         $event->cancel_reason = $validated['cancel_reason'];
         $event->save();
 
-        // Load category relationship for the email template
         $event->load('category');
 
         // Gửi email thông báo hủy cho tất cả người đã đăng ký (approved + pending)
@@ -308,7 +311,7 @@ class OrganizerEventController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Đã hủy sự kiện thành công. Email thông báo đã được gửi đến người đăng ký.',
-            'data'    => $event
+            'data'    => $event,
         ]);
     }
 }
